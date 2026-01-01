@@ -1,13 +1,163 @@
 ---
 name: sdp-writer
-description: "Create, configure, or update Databricks' Lakeflow Spark Declarative Pipelines (SDP), also known as LDP, or historically Delta Live Tables (DLT). User should guide on using SQL or Python syntax.
-
-This skill leverages modern best practices for cost, performance, and scalability. Use when working with: (1) Creating new Databricks Declarative Pipeline projects in SQL or Python, (2) Updating existing pipelines, (3) Migrating to SDP from legacy systems, (4) Comparing approaches (serverless vs classic compute, SQL vs Python).
+description: "Create, configure, or update Databricks' Lakeflow Spark Declarative Pipelines (SDP), also known as LDP, or historically Delta Live Tables (DLT). User should guide on using SQL or Python syntax."
 ---
 
 # Lakeflow Spark Declarative Pipelines (SDP) Writer
 
+## Official Documentation
+
+- **[Lakeflow Spark Declarative Pipelines Overview](https://docs.databricks.com/aws/en/ldp/)** - Main documentation hub
+- **[Python Language Reference](https://docs.databricks.com/aws/en/ldp/developer/python-ref)** - `pyspark.pipelines` API
+- **[SQL Language Reference](https://docs.databricks.com/aws/en/dlt-ref/sql-ref)** - SQL syntax for streaming tables and materialized views
+- **[Loading Data](https://docs.databricks.com/aws/en/ldp/load)** - Auto Loader, Kafka, Kinesis ingestion
+- **[Change Data Capture (CDC)](https://docs.databricks.com/aws/en/ldp/cdc)** - AUTO CDC, SCD Type 1/2
+- **[Developing Pipelines](https://docs.databricks.com/aws/en/ldp/develop)** - File structure, testing, validation
+- **[Tutorial: Build an ETL Pipeline](https://docs.databricks.com/aws/en/getting-started/data-pipeline-get-started)** - Step-by-step guide
+- **[Liquid Clustering](https://docs.databricks.com/aws/en/delta/clustering)** - Modern data layout optimization
+- **[Reference Architecture](https://www.databricks.com/resources/architectures/build-production-etl-with-lakeflow-declarative-pipelines)** - Production patterns
+
+---
+
+## Development Workflow with MCP Tools
+
+This skill uses MCP tools to create and iterate on SDP pipelines. Follow this workflow:
+
+### Step 1: Write Pipeline Files Locally
+
+Create `.sql` or `.py` files in a local folder structure:
+
+```
+my_pipeline/
+└── transformations/
+    ├── bronze/
+    │   └── ingest_orders.sql
+    ├── silver/
+    │   └── clean_orders.sql
+    └── gold/
+        └── daily_summary.sql
+```
+
+**Example bronze layer** (`transformations/bronze/ingest_orders.sql`):
+```sql
+CREATE OR REPLACE STREAMING TABLE bronze_orders
+CLUSTER BY (order_date)
+AS
+SELECT
+  *,
+  current_timestamp() AS _ingested_at,
+  _metadata.file_path AS _source_file
+FROM read_files(
+  '/Volumes/catalog/schema/raw/orders/',
+  format => 'json',
+  schemaHints => 'order_id STRING, customer_id STRING, amount DECIMAL(10,2), order_date DATE'
+);
+```
+
+### Step 2: Upload Local Folder to Databricks Workspace
+
+Use the **`upload_folder`** tool to upload your local pipeline folder to the Databricks workspace:
+
+```python
+# MCP Tool: upload_folder
+upload_folder(
+    local_folder="/path/to/my_pipeline",
+    workspace_folder="/Workspace/Users/user@example.com/my_pipeline"
+)
+```
+
+This uploads all files in parallel and creates the directory structure automatically.
+
+### Step 3: Create the Pipeline
+
+Use the **`create_pipeline`** tool to create the SDP pipeline:
+
+```python
+# MCP Tool: create_pipeline
+result = create_pipeline(
+    name="my_orders_pipeline",
+    root_path="/Workspace/Users/user@example.com/my_pipeline",
+    catalog="my_catalog",
+    schema="my_schema",
+    workspace_notebook_paths=[
+        "/Workspace/Users/user@example.com/my_pipeline/transformations/bronze/ingest_orders.sql",
+        "/Workspace/Users/user@example.com/my_pipeline/transformations/silver/clean_orders.sql",
+        "/Workspace/Users/user@example.com/my_pipeline/transformations/gold/daily_summary.sql"
+    ],
+    serverless=True
+)
+pipeline_id = result.pipeline_id
+```
+
+### Step 4: Start Pipeline Update and Monitor
+
+Run the pipeline and monitor progress:
+
+```python
+# MCP Tool: start_update (dry run first to validate)
+update_id = start_update(pipeline_id=pipeline_id, validate_only=True)
+
+# MCP Tool: get_update (poll for status)
+status = get_update(pipeline_id=pipeline_id, update_id=update_id)
+# Status states: QUEUED, RUNNING, COMPLETED, FAILED
+
+# If validation passes, run the actual update
+update_id = start_update(pipeline_id=pipeline_id)
+status = get_update(pipeline_id=pipeline_id, update_id=update_id)
+```
+
+### Step 5: Debug Errors with Pipeline Events
+
+If the pipeline fails, get error details:
+
+```python
+# MCP Tool: get_pipeline_events
+events = get_pipeline_events(pipeline_id=pipeline_id, max_results=50)
+# Review error messages and stack traces
+```
+
+### Step 6: Iterate Until Working
+
+1. Review errors from `get_pipeline_events`
+2. Fix issues in local files
+3. Re-upload with `upload_folder` (overwrites existing files)
+4. Run `start_update` again
+5. Repeat until `get_update` shows `COMPLETED`
+
+### Step 7: Verify Output Tables with Table Stats
+
+Once the pipeline completes, **verify the output tables are populated correctly** using `get_table_details`:
+
+```python
+# MCP Tool: get_table_details
+# Verify bronze table has data
+bronze_stats = get_table_details(
+    catalog="my_catalog",
+    schema="my_schema",
+    table_names=["bronze_orders"],
+    table_stat_level="SIMPLE"  # or "DETAILED" for column stats
+)
+# Check: row_count > 0, columns match expected schema
+
+# Verify all pipeline tables
+all_stats = get_table_details(
+    catalog="my_catalog",
+    schema="my_schema",
+    table_names=["bronze_*", "silver_*", "gold_*"],  # GLOB patterns
+    table_stat_level="DETAILED"
+)
+```
+
+**Use table stats to debug:**
+- **Empty tables**: Check upstream sources, filter conditions
+- **Missing columns**: Verify schema hints, column mappings
+- **Unexpected row counts**: Review WHERE clauses, deduplication logic
+- **Data quality issues**: Check column value distributions with DETAILED stats
+
+---
+
 ## Overview
+
 Create SDP pipelines in SQL or Python with 2025 best practices.
 
 **Language Selection** (prompt if not specified):
@@ -17,10 +167,10 @@ Create SDP pipelines in SQL or Python with 2025 best practices.
 **Modern Approach (2025)**:
 - Use `CLUSTER BY` (Liquid Clustering) not `PARTITION BY`
 - Use serverless compute for auto-scaling
-- Always generate DABs configuration via **dabs-writer** skill for deployment
 
+---
 
-## Reference Documentation
+## Reference Documentation (Local)
 
 Load these modules for detailed patterns:
 
@@ -29,6 +179,7 @@ Load these modules for detailed patterns:
 - **[scd-query-patterns.md](scd-query-patterns.md)** - Querying SCD2 history tables
 - **[dlt-migration-guide.md](dlt-migration-guide.md)** - Migrating from DLT Python to SDP SQL
 - **[performance-tuning.md](performance-tuning.md)** - Liquid Clustering, optimization, compute config
+- **[python-api-versions.md](python-api-versions.md)** - Modern `dp` API vs legacy `dlt` API
 
 ---
 
@@ -63,7 +214,7 @@ When updating pipelines via API, **always include `root_path`**:
   "name": "Pipeline",
   "catalog": "my_catalog",
   "target": "my_schema",
-  "root_path": "/Workspace/Users/.../PipelineName",  // Critical!
+  "root_path": "/Workspace/Users/.../PipelineName",
   "libraries": [...]
 }
 ```
@@ -213,18 +364,36 @@ Auto-generates START_AT/END_AT columns. **See [scd-query-patterns.md](scd-query-
 - **Triggered**: Scheduled batch (lower cost, configure in pipeline settings)
 - **Continuous**: Real-time streaming (sub-second latency, configure in pipeline settings)
 
-### Deployment with DABs
+---
 
-**Always create DABs configuration** for SDP pipelines to enable multi-environment deployment and CI/CD.
+## MCP Tools Reference
 
-**Use dabs-writer skill** to generate proper bundle configuration:
+### Pipeline Management
 
-```bash
-databricks bundle deploy -t dev
-databricks bundle run my_pipeline -t dev
-```
+| Tool | Description |
+|------|-------------|
+| `create_pipeline` | Create new pipeline with name, catalog, schema, notebook paths |
+| `get_pipeline` | Get pipeline configuration and state |
+| `update_pipeline` | Update pipeline configuration |
+| `delete_pipeline` | Delete a pipeline |
+| `start_update` | Start pipeline run or dry-run validation |
+| `get_update` | Get update status (QUEUED, RUNNING, COMPLETED, FAILED) |
+| `stop_pipeline` | Stop a running pipeline |
+| `get_pipeline_events` | Get error messages and events for debugging |
 
-**See dabs-writer skill** for complete multi-environment setup, permissions, and CI/CD patterns
+### File Operations
+
+| Tool | Description |
+|------|-------------|
+| `upload_folder` | Upload local folder to workspace (parallel) |
+| `upload_file` | Upload single file to workspace |
+
+### Data Verification
+
+| Tool | Description |
+|------|-------------|
+| `get_table_details` | Get table schema and statistics to verify pipeline output |
+| `execute_sql` | Run ad-hoc SQL queries to inspect data |
 
 ---
 
@@ -252,13 +421,6 @@ databricks bundle run my_pipeline -t dev
 | **High latency/cost** | Use triggered mode for batch; continuous only for sub-second SLA |
 | **Slow startups** | Use serverless compute (not classic clusters) |
 | **Deletes not honored** | Increase `pipelines.cdc.tombstoneGCThresholdInSeconds` |
+| **Empty output tables** | Use `get_table_details` to verify data, check upstream sources |
 
 **For detailed troubleshooting**, see individual reference files
-
-## Resources
-
-- [Lakeflow Spark Declarative Pipeline Documentation](https://docs.databricks.com/aws/en/ldp/)
-- [Change Data Capture Documentation] (https://docs.databricks.com/aws/en/ldp/cdc) 
-- [Lakeflow Spark Declarative Pipeline load data](https://docs.databricks.com/aws/en/ldp/load)
-- [Reference Architecture ](https://www.databricks.com/resources/architectures/build-production-etl-with-lakeflow-declarative-pipelines)
-- [Legacy - Delta Live Tables Documentation](https://docs.databricks.com/workflows/delta-live-tables/)

@@ -1,146 +1,228 @@
 # Databricks AI Dev Kit
 
-MCP (Model Context Protocol) server for building Databricks projects with AI coding assistants like Claude Code and Cursor.
+Build Databricks projects with AI coding assistants (Claude Code, Cursor, etc.) using MCP (Model Context Protocol).
 
 ## Overview
 
-High-level, AI-assistant-friendly tools for Databricks operations. Organized by product line for scalability.
+The AI Dev Kit provides everything you need to build on Databricks using AI assistants:
+
+- **High-level Python functions** for Databricks operations
+- **MCP server** that exposes these functions as tools for AI assistants
+- **Skills** that teach AI assistants best practices and patterns
 
 ## Architecture
 
 ```
-databricks-mcp-core/              # Pure Python library
-├── unity_catalog/                # Catalogs, schemas, tables
-├── compute/                      # Execution contexts
-├── spark_declarative_pipelines/  # Pipeline management & workspace files
-├── agent_bricks/                 # Agent Bricks (future)
-└── dabs/                        # DAB generation (future)
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              Your Project                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   ┌─────────────────────────┐        ┌─────────────────────────────────┐   │
+│   │   databricks-skills/    │        │   .claude/mcp.json              │   │
+│   │                         │        │                                 │   │
+│   │   Knowledge & Patterns  │        │   MCP Server Config             │   │
+│   │   • dabs-writer         │        │   → databricks-mcp-server       │   │
+│   │   • sdp-writer          │        │                                 │   │
+│   │   • synthetic-data-gen  │        └───────────────┬─────────────────┘   │
+│   │   • databricks-sdk      │                        │                      │
+│   └───────────┬─────────────┘                        │                      │
+│               │                                      │                      │
+│               │    SKILLS teach                      │    TOOLS execute     │
+│               │    HOW to do things                  │    actions on        │
+│               │                                      │    Databricks        │
+│               ▼                                      ▼                      │
+│   ┌─────────────────────────────────────────────────────────────────────┐  │
+│   │                          Claude Code                                 │  │
+│   │                                                                      │  │
+│   │   "Create a DAB with a DLT pipeline and deploy to dev/prod"         │  │
+│   │                                                                      │  │
+│   │   → Uses SKILLS to know the patterns and best practices             │  │
+│   │   → Uses MCP TOOLS to execute SQL, create pipelines, etc.           │  │
+│   └─────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 
-databricks-mcp-server/            # MCP protocol wrapper
-├── server.py                    # FastAPI + SSE
-└── tools/                       # MCP tool wrappers
+                                    │
+                                    │ MCP Protocol
+                                    ▼
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                        databricks-mcp-server                                 │
+│                                                                              │
+│   Exposes Python functions as MCP tools via stdio transport                 │
+│   • execute_sql, execute_sql_multi                                          │
+│   • get_table_details, list_warehouses                                      │
+│   • run_python_file_on_databricks                                           │
+│   • ka_create, mas_create, genie_create (Agent Bricks)                      │
+│   • create_pipeline, start_pipeline (SDP)                                   │
+│   • ... and more                                                            │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ Python imports
+                                    ▼
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         databricks-mcp-core                                  │
+│                                                                              │
+│   Pure Python library with high-level Databricks functions                  │
+│                                                                              │
+│   ├── sql/                    SQL execution, warehouses, table stats        │
+│   ├── unity_catalog/          Catalogs, schemas, tables                     │
+│   ├── compute/                Execution contexts, run code on clusters      │
+│   ├── spark_declarative_pipelines/   DLT/SDP pipeline management            │
+│   └── agent_bricks/           Genie, Knowledge Assistants, MAS              │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ API calls
+                                    ▼
+
+                          ┌─────────────────────┐
+                          │  Databricks         │
+                          │  Workspace          │
+                          └─────────────────────┘
 ```
 
-## Installation
+## Quick Start
+
+### Step 1: Clone and install
 
 ```bash
-# Using uv (recommended)
-uv venv
-uv pip install -e databricks-mcp-core
-uv pip install -e databricks-mcp-server
+# Clone the repository
+git clone https://github.com/databricks-solutions/ai-dev-kit.git
+cd ai-dev-kit
 
-# Or using pip
-pip install -e databricks-mcp-core
-pip install -e databricks-mcp-server
+# Install the core library
+cd databricks-mcp-core
+uv pip install -e .
 
-# Configure authentication (use your Databricks profile)
-export DATABRICKS_CONFIG_PROFILE=your-profile
-# or set DATABRICKS_HOST and DATABRICKS_TOKEN
+# Install the MCP server
+cd ../databricks-mcp-server
+uv pip install -e .
 ```
 
-## Quickstart
+### Step 2: Configure Databricks authentication
 
-### Using the MCP Server with Claude Code
+```bash
+# Option 1: Environment variables
+export DATABRICKS_HOST="https://your-workspace.cloud.databricks.com"
+export DATABRICKS_TOKEN="your-token"
 
-1. Install packages (see above)
-2. Configure authentication (uses DEFAULT profile from `~/.databrickscfg` if not set)
-3. Configure Claude Code MCP settings (see below) - no need to manually start server!
-4. Ask Claude to list your catalogs, create tables, run pipelines, etc.
+# Option 2: Use a profile from ~/.databrickscfg
+export DATABRICKS_CONFIG_PROFILE="your-profile"
+```
 
-### Using the Core Library Directly
+### Step 3: Add MCP server to your project
+
+In your project directory, create `.claude/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "databricks": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "databricks_mcp_server.server"],
+      "cwd": "/path/to/ai-dev-kit/databricks-mcp-server",
+      "defer_loading": true
+    }
+  }
+}
+```
+
+**Replace `/path/to/ai-dev-kit`** with the actual path where you cloned the repo.
+
+### Step 4: Install Databricks skills to your project (recommended)
+
+Skills teach Claude best practices and patterns:
+
+```bash
+# In your project directory
+curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash
+```
+
+This installs to `.claude/skills/`:
+- **dabs-writer**: Databricks Asset Bundles patterns
+- **sdp-writer**: Spark Declarative Pipelines (DLT)
+- **synthetic-data-generation**: Realistic test data generation
+- **databricks-python-sdk**: SDK and API usage
+
+### Step 5: Start Claude Code
+
+```bash
+cd /path/to/your/project
+claude
+```
+
+Claude now has both **skills** (knowledge) and **MCP tools** (actions) for Databricks!
+
+## Components
+
+| Component | Description |
+|-----------|-------------|
+| [databricks-mcp-core](databricks-mcp-core/) | Pure Python library with Databricks functions |
+| [databricks-mcp-server](databricks-mcp-server/) | MCP server wrapping core functions as tools |
+| [databricks-skills](databricks-skills/) | Skills for Claude Code with patterns & examples |
+
+## Using the Core Library Directly
+
+The core library can be used without the MCP server:
 
 ```python
-from databricks_mcp_core.unity_catalog import catalogs, schemas, tables
-from databricks.sdk.service.catalog import ColumnInfo, TableType
+from databricks_mcp_core.sql import execute_sql, get_table_details, TableStatLevel
 
-# List catalogs (returns List[CatalogInfo])
-all_catalogs = catalogs.list_catalogs()
-for catalog in all_catalogs:
-    print(catalog.name)
+# Execute SQL
+results = execute_sql("SELECT * FROM my_catalog.my_schema.customers LIMIT 10")
 
-# Create a table (returns TableInfo)
-table = tables.create_table(
-    catalog_name="main",
-    schema_name="default",
-    table_name="my_table",
-    columns=[
-        ColumnInfo(name="id", type_name="INT"),
-        ColumnInfo(name="name", type_name="STRING")
-    ],
-    table_type=TableType.MANAGED
+# Get table statistics
+stats = get_table_details(
+    catalog="my_catalog",
+    schema="my_schema",
+    table_names=["customers", "orders"],
+    table_stat_level=TableStatLevel.DETAILED
+)
+
+# Run Python on a cluster
+from databricks_mcp_core.compute import run_python_file_on_databricks
+
+result = run_python_file_on_databricks(
+    cluster_id="your-cluster-id",
+    file_path="scripts/generate_data.py"
 )
 ```
 
-All functions use the official `databricks-sdk` and handle authentication automatically.
-
-## Available Tools (33)
-
-**Unity Catalog (11):**
-- Catalogs: list_catalogs, get_catalog
-- Schemas: list_schemas, get_schema, create_schema, update_schema, delete_schema
-- Tables: list_tables, get_table, create_table, delete_table
-
-**Compute (4):**
-- create_context, execute_command_with_context, destroy_context, databricks_command
-
-**Spark Declarative Pipelines (15):**
-- Pipeline Management (9): create_pipeline, get_pipeline, update_pipeline_config, delete_pipeline, start_pipeline_update, validate_pipeline, get_pipeline_update_status, stop_pipeline, get_pipeline_events
-- Workspace Files (6): list_pipeline_files, get_pipeline_file_status, read_pipeline_file, write_pipeline_file, create_pipeline_directory, delete_pipeline_path
-
-**Synthetic Data Generation (3):**
-- get_synth_data_template, write_synth_data_script_to_workspace, generate_and_upload_synth_data
-
-## Usage with Claude Code
-
-Add to `.claude/.mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "ai-dev-kit": {
-      "command": "uv",
-      "args": ["run", "python", "-m", "databricks_mcp_server.stdio_server"],
-      "transport": "stdio"
-    }
-  }
-}
-```
-
-**Note:** The server runs automatically when Claude needs it - no manual startup required!
-
-If not using `uv`, use:
-```json
-{
-  "mcpServers": {
-    "ai-dev-kit": {
-      "command": "python",
-      "args": ["-m", "databricks_mcp_server.stdio_server"],
-      "transport": "stdio"
-    }
-  }
-}
-```
-
-Then ask Claude to interact with your Databricks workspace!
-
 ## Documentation
 
-- [databricks-mcp-core README](databricks-mcp-core/README.md) - Core package details
+- [databricks-mcp-core README](databricks-mcp-core/README.md) - Core library details, all functions
 - [databricks-mcp-server README](databricks-mcp-server/README.md) - Server configuration
+- [databricks-skills README](databricks-skills/README.md) - Skills installation and usage
+
+## Development
+
+```bash
+# Clone the repo
+git clone https://github.com/databricks-solutions/ai-dev-kit.git
+cd ai-dev-kit
+
+# Install with uv
+uv pip install -e databricks-mcp-core
+uv pip install -e databricks-mcp-server
+
+# Run tests
+cd databricks-mcp-core
+uv run pytest tests/integration/ -v
+```
 
 ## License
 
-© 2025 Databricks, Inc. All rights reserved. The source in this notebook is provided subject to the Databricks License [https://databricks.com/db-license-source].
+© 2025 Databricks, Inc. All rights reserved. The source in this project is provided subject to the [Databricks License](https://databricks.com/db-license-source).
 
-## 📄 Third-Party Package Licenses
-
-&copy; 2025 Databricks, Inc. All rights reserved. The source in this project is provided subject to the Databricks License [https://databricks.com/db-license-source]. All included or referenced third party libraries are subject to the licenses set forth below.
+## Third-Party Package Licenses
 
 | Package | License | Copyright |
 |---------|---------|-----------|
 | [databricks-sdk](https://github.com/databricks/databricks-sdk-py) | Apache License 2.0 | Copyright (c) Databricks, Inc. |
+| [fastmcp](https://github.com/jlowin/fastmcp) | MIT License | Copyright (c) 2024 Jeremiah Lowin |
 | [pydantic](https://github.com/pydantic/pydantic) | MIT License | Copyright (c) 2017 Samuel Colvin |
-| [fastapi](https://github.com/tiangolo/fastapi) | MIT License | Copyright (c) 2018 Sebastián Ramírez |
-| [uvicorn](https://github.com/encode/uvicorn) | BSD 3-Clause License | Copyright © 2017-present, Encode OSS Ltd. |
-| [sse-starlette](https://github.com/sysid/sse-starlette) | BSD 3-Clause License | Copyright (c) 2020, sysid |
-| [python-dotenv](https://github.com/theskumar/python-dotenv) | BSD 3-Clause License | Copyright (c) 2014, Saurabh Kumar |
+| [sqlglot](https://github.com/tobymao/sqlglot) | MIT License | Copyright (c) 2022 Toby Mao |
+| [sqlfluff](https://github.com/sqlfluff/sqlfluff) | MIT License | Copyright (c) 2019 Alan Cruickshank |

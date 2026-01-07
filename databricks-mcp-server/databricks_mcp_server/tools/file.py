@@ -1,7 +1,7 @@
 """File tools - Upload files and folders to Databricks workspace."""
 from typing import Dict, Any
 
-from databricks_mcp_core.file import (
+from databricks_tools_core.file import (
     upload_folder as _upload_folder,
     upload_file as _upload_file,
 )

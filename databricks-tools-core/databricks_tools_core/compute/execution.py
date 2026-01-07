@@ -7,7 +7,7 @@ Uses Databricks Command Execution API via SDK.
 import datetime
 from typing import Optional
 from databricks.sdk import WorkspaceClient
-from databricks.sdk.service.compute import Language
+from databricks.sdk.service.compute import CommandStatus, Language
 
 
 class ExecutionResult:
@@ -100,16 +100,20 @@ def execute_command_with_context(
             command=code
         ).result(timeout=datetime.timedelta(seconds=timeout))
 
-        # Check result status
-        if result.status == "Finished":
+        # Check result status (compare with enum values)
+        if result.status == CommandStatus.FINISHED:
+            # Check if there was an error in the results
+            if result.results and result.results.result_type and result.results.result_type.value == "error":
+                error_msg = result.results.cause if result.results.cause else "Unknown error"
+                return ExecutionResult(success=False, error=error_msg)
             output = (
-                result.results.data if result.results
+                result.results.data if result.results and result.results.data
                 else "Success (no output)"
             )
             return ExecutionResult(success=True, output=str(output))
-        elif result.status in ["Error", "Cancelled"]:
+        elif result.status in [CommandStatus.ERROR, CommandStatus.CANCELLED]:
             error_msg = (
-                result.results.cause if result.results
+                result.results.cause if result.results and result.results.cause
                 else "Unknown error"
             )
             return ExecutionResult(success=False, error=error_msg)

@@ -1,5 +1,5 @@
 """
-Pytest fixtures for databricks-mcp-core integration tests.
+Pytest fixtures for databricks-tools-core integration tests.
 
 These fixtures set up and tear down test resources in Databricks.
 Requires a valid Databricks connection (via env vars or ~/.databrickscfg).
@@ -138,7 +138,7 @@ def test_tables(
 
     Returns dict with table names.
     """
-    from databricks_mcp_core.sql import execute_sql
+    from databricks_tools_core.sql import execute_sql
 
     tables = {
         "customers": f"{test_catalog}.{test_schema}.customers",

@@ -447,7 +447,7 @@ print("=" * 50)
 Save the script locally (e.g., `scripts/generate_data.py`), then execute:
 
 ```python
-from databricks_mcp_core.compute import run_python_file_on_databricks
+from databricks_tools_core.compute import run_python_file_on_databricks
 
 result = run_python_file_on_databricks(
     cluster_id="your-cluster-id",
@@ -465,7 +465,7 @@ else:
 Or execute code directly:
 
 ```python
-from databricks_mcp_core.compute import execute_databricks_command
+from databricks_tools_core.compute import execute_databricks_command
 
 result = execute_databricks_command(
     cluster_id="your-cluster-id",

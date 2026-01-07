@@ -1,10 +1,10 @@
-# Databricks MCP Core
+# Databricks Tools Core
 
 High-level, AI-assistant-friendly Python functions for building Databricks projects.
 
 ## Overview
 
-The `databricks-mcp-core` package provides reusable, opinionated functions for interacting with the Databricks platform. It is designed to be used by AI coding assistants (Claude Code, Cursor, etc.) and developers who want simple, high-level APIs for common Databricks operations.
+The `databricks-tools-core` package provides reusable, opinionated functions for interacting with the Databricks platform. It is designed to be used by AI coding assistants (Claude Code, Cursor, etc.) and developers who want simple, high-level APIs for common Databricks operations.
 
 ### Modules
 
@@ -57,7 +57,7 @@ export DATABRICKS_CONFIG_PROFILE="my-profile"
 Execute SQL queries on Databricks SQL Warehouses:
 
 ```python
-from databricks_mcp_core.sql import execute_sql, execute_sql_multi
+from databricks_tools_core.sql import execute_sql, execute_sql_multi
 
 # Simple query (auto-selects warehouse if not specified)
 result = execute_sql("SELECT * FROM my_catalog.my_schema.customers LIMIT 10")
@@ -89,7 +89,7 @@ result = execute_sql_multi(
 List and select SQL warehouses:
 
 ```python
-from databricks_mcp_core.sql import list_warehouses, get_best_warehouse
+from databricks_tools_core.sql import list_warehouses, get_best_warehouse
 
 # List warehouses (running ones first)
 warehouses = list_warehouses(limit=20)
@@ -105,7 +105,7 @@ warehouse_id = get_best_warehouse()
 Get detailed table information and column statistics:
 
 ```python
-from databricks_mcp_core.sql import get_table_details, TableStatLevel
+from databricks_tools_core.sql import get_table_details, TableStatLevel
 
 # Get all tables in a schema with basic stats
 result = get_table_details(
@@ -147,7 +147,7 @@ result = get_table_details(
 ### Unity Catalog Operations
 
 ```python
-from databricks_mcp_core.unity_catalog import catalogs, schemas, tables
+from databricks_tools_core.unity_catalog import catalogs, schemas, tables
 
 # List catalogs
 all_catalogs = catalogs.list_catalogs()
@@ -177,8 +177,8 @@ table = tables.create_table(
 ## Architecture
 
 ```
-databricks-mcp-core/
-├── databricks_mcp_core/
+databricks-tools-core/
+├── databricks_tools_core/
 │   ├── sql/                          # SQL operations
 │   │   ├── sql.py                    # execute_sql, execute_sql_multi
 │   │   ├── warehouse.py              # list_warehouses, get_best_warehouse
@@ -272,10 +272,10 @@ uv pip install -e ".[dev]"
 uv run pytest
 
 # Format code
-uv run black databricks_mcp_core/
+uv run black databricks_tools_core/
 
 # Lint code
-uv run ruff check databricks_mcp_core/
+uv run ruff check databricks_tools_core/
 ```
 
 ## Dependencies

@@ -18,11 +18,11 @@ lsof -ti:8000 | xargs kill -9 2>/dev/null || true
 lsof -ti:3000 | xargs kill -9 2>/dev/null || true
 sleep 1
 
-# Install sibling packages (databricks-mcp-core and databricks-mcp-server)
+# Install sibling packages (databricks-tools-core and databricks-mcp-server)
 echo "Installing Databricks MCP packages..."
-uv pip install -e "$REPO_ROOT/databricks-mcp-core" -e "$REPO_ROOT/databricks-mcp-server" --quiet 2>/dev/null || {
+uv pip install -e "$REPO_ROOT/databricks-tools-core" -e "$REPO_ROOT/databricks-mcp-server" --quiet 2>/dev/null || {
   echo "Installing with pip..."
-  pip install -e "$REPO_ROOT/databricks-mcp-core" -e "$REPO_ROOT/databricks-mcp-server" --quiet
+  pip install -e "$REPO_ROOT/databricks-tools-core" -e "$REPO_ROOT/databricks-mcp-server" --quiet
 }
 
 # Function to kill background processes on exit

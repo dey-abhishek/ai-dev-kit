@@ -6,6 +6,7 @@ from .backup_manager import (
   start_backup_worker,
   stop_backup_worker,
 )
+from .clusters import list_clusters_async
 from .mcp_client import clear_tools_cache, get_databricks_mcp_config, get_databricks_mcp_tools
 from .skills_manager import copy_skills_to_app, copy_skills_to_project, get_available_skills
 from .storage import ConversationStorage, ProjectStorage
@@ -25,6 +26,7 @@ __all__ = [
   'get_project_directory',
   'get_system_prompt',
   'get_workspace_url',
+  'list_clusters_async',
   'mark_for_backup',
   'start_backup_worker',
   'stop_backup_worker',

@@ -69,6 +69,9 @@ class Conversation(Base):
   # Claude agent session ID (for resuming sessions)
   session_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
+  # Databricks cluster ID for code execution
+  cluster_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
   # Relationships
   project: Mapped['Project'] = relationship('Project', back_populates='conversations')
   messages: Mapped[List['Message']] = relationship(
@@ -85,6 +88,7 @@ class Conversation(Base):
       'title': self.title,
       'created_at': self.created_at.isoformat() if self.created_at else None,
       'session_id': self.session_id,
+      'cluster_id': self.cluster_id,
       'messages': [m.to_dict() for m in self.messages] if self.messages else [],
     }
 
@@ -95,6 +99,7 @@ class Conversation(Base):
       'project_id': self.project_id,
       'title': self.title,
       'created_at': self.created_at.isoformat() if self.created_at else None,
+      'cluster_id': self.cluster_id,
       'message_count': len(self.messages) if self.messages else 0,
     }
 

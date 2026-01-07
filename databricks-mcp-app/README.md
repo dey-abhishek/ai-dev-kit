@@ -166,7 +166,7 @@ ENV=development
 uv sync
 
 # Install sibling packages (MCP server)
-uv pip install -e ../databricks-mcp-core -e ../databricks-mcp-server
+uv pip install -e ../databricks-tools-core -e ../databricks-mcp-server
 
 # Start development servers (backend + frontend)
 ./scripts/start_dev.sh
@@ -234,6 +234,6 @@ databricks-mcp-app/
 
 ## Related Packages
 
-- **databricks-mcp-core**: Core MCP functionality and SQL operations
+- **databricks-tools-core**: Core MCP functionality and SQL operations
 - **databricks-mcp-server**: MCP server exposing Databricks tools
 - **databricks-skills**: Skill definitions for Databricks development

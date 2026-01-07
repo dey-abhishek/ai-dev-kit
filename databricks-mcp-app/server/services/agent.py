@@ -32,7 +32,7 @@ BUILTIN_TOOLS = [
   'Read',
   'Write',
   'Edit',
-  'Bash',
+#  'Bash',
   'Glob',
   'Grep',
   'Skill',  # For loading skills
@@ -58,6 +58,7 @@ async def stream_agent_response(
   project_id: str,
   message: str,
   session_id: str | None = None,
+  cluster_id: str | None = None,
 ) -> AsyncIterator[dict]:
   """Stream Claude agent response with all event types.
 
@@ -68,6 +69,7 @@ async def stream_agent_response(
       project_id: The project UUID
       message: User message to send
       session_id: Optional session ID for resuming conversations
+      cluster_id: Optional Databricks cluster ID for code execution
 
   Yields:
       Event dicts with 'type' field for frontend consumption
@@ -91,8 +93,8 @@ async def stream_agent_response(
       allowed_tools.extend(databricks_tools)
       logger.info(f'Databricks MCP tools enabled: {len(databricks_tools)} tools')
 
-  # Generate system prompt with available skills
-  system_prompt = get_system_prompt()
+  # Generate system prompt with available skills and cluster info
+  system_prompt = get_system_prompt(cluster_id=cluster_id)
 
   options = ClaudeCodeOptions(
     cwd=str(project_dir),

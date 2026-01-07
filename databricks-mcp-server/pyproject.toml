@@ -20,7 +20,7 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "databricks-mcp-core",
+    "databricks-tools-core",
     "fastmcp>=0.1.0",
 ]
 

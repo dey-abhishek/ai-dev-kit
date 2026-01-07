@@ -76,7 +76,7 @@ export function TopBar({ projectName }: TopBarProps) {
           {displayName && (
             <div
               className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[var(--color-bg-secondary)] border border-[var(--color-border)] shadow-sm"
-              title={user}
+              title={user || undefined}
             >
               <div className="w-6 h-6 rounded-full bg-[var(--color-accent-primary)] flex items-center justify-center text-white text-xs font-medium">
                 {displayName.charAt(0).toUpperCase()}

@@ -1,7 +1,7 @@
 """Compute tools - Execute code on Databricks clusters."""
 from typing import Dict, Any
 
-from databricks_mcp_core.compute import (
+from databricks_tools_core.compute import (
     execute_databricks_command as _execute_databricks_command,
     run_python_file_on_databricks as _run_python_file_on_databricks,
 )

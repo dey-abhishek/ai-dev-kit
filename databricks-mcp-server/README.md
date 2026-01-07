@@ -15,7 +15,7 @@ cd ai-dev-kit
 
 ```bash
 # Install the core library
-cd databricks-mcp-core
+cd databricks-tools-core
 uv pip install -e .
 
 # Install the MCP server
@@ -140,7 +140,7 @@ Claude now has both:
                                │ Python imports
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                   databricks-mcp-core                        │
+│                   databricks-tools-core                        │
 │                                                              │
 │  sql/         compute/       file/         pipelines/       │
 │  └── execute  └── run_code   └── upload    └── create/run   │
@@ -155,11 +155,11 @@ Claude now has both:
 
 ## Development
 
-The server is intentionally simple - each tool file just imports functions from `databricks-mcp-core` and decorates them with `@mcp.tool`.
+The server is intentionally simple - each tool file just imports functions from `databricks-tools-core` and decorates them with `@mcp.tool`.
 
 To add a new tool:
 
-1. Add the function to `databricks-mcp-core`
+1. Add the function to `databricks-tools-core`
 2. Create a wrapper in `databricks_mcp_server/tools/`
 3. Import it in `server.py`
 
@@ -167,7 +167,7 @@ Example:
 
 ```python
 # tools/my_module.py
-from databricks_mcp_core.my_module import my_function as _my_function
+from databricks_tools_core.my_module import my_function as _my_function
 from ..server import mcp
 
 @mcp.tool

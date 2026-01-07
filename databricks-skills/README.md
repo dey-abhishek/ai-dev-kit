@@ -139,7 +139,7 @@ description: "Description of what this skill teaches"
 
 ## Related
 
-- [databricks-mcp-core](../databricks-mcp-core/) - Python library with Databricks functions
+- [databricks-tools-core](../databricks-tools-core/) - Python library with Databricks functions
 - [databricks-mcp-server](../databricks-mcp-server/) - MCP server exposing tools to Claude
 - [Databricks Asset Bundles](https://docs.databricks.com/dev-tools/bundles/) - Official DABs documentation
 - [Spark Declarative Pipelines](https://docs.databricks.com/delta-live-tables/) - Official DLT/SDP documentation

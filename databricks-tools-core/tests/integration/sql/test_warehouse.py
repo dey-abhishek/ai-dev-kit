@@ -7,7 +7,7 @@ Tests:
 """
 
 import pytest
-from databricks_mcp_core.sql import list_warehouses, get_best_warehouse
+from databricks_tools_core.sql import list_warehouses, get_best_warehouse
 
 
 @pytest.mark.integration

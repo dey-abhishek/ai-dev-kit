@@ -1,7 +1,7 @@
 """Pipeline tools - Manage Spark Declarative Pipelines (SDP)."""
 from typing import List, Optional, Dict, Any
 
-from databricks_mcp_core.spark_declarative_pipelines.pipelines import (
+from databricks_tools_core.spark_declarative_pipelines.pipelines import (
     create_pipeline as _create_pipeline,
     get_pipeline as _get_pipeline,
     update_pipeline as _update_pipeline,

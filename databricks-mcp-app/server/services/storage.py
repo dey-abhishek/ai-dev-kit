@@ -181,6 +181,24 @@ class ConversationStorage:
         return True
       return False
 
+  async def update_cluster_id(self, conversation_id: str, cluster_id: str | None) -> bool:
+    """Update Databricks cluster ID for code execution."""
+    async with session_scope() as session:
+      result = await session.execute(
+        select(Conversation)
+        .join(Project, Conversation.project_id == Project.id)
+        .where(
+          Conversation.id == conversation_id,
+          Conversation.project_id == self.project_id,
+          Project.user_email == self.user_email,
+        )
+      )
+      conversation = result.scalar_one_or_none()
+      if conversation:
+        conversation.cluster_id = cluster_id
+        return True
+      return False
+
   async def delete(self, conversation_id: str) -> bool:
     """Delete a conversation and all its messages."""
     async with session_scope() as session:

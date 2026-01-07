@@ -63,7 +63,7 @@ The AI Dev Kit provides everything you need to build on Databricks using AI assi
                                     ▼
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         databricks-mcp-core                                  │
+│                         databricks-tools-core                                  │
 │                                                                              │
 │   Pure Python library with high-level Databricks functions                  │
 │                                                                              │
@@ -94,7 +94,7 @@ git clone https://github.com/databricks-solutions/ai-dev-kit.git
 cd ai-dev-kit
 
 # Install the core library
-cd databricks-mcp-core
+cd databricks-tools-core
 uv pip install -e .
 
 # Install the MCP server
@@ -160,18 +160,18 @@ Claude now has both **skills** (knowledge) and **MCP tools** (actions) for Datab
 
 | Component | Description |
 |-----------|-------------|
-| [databricks-mcp-core](databricks-mcp-core/) | Pure Python library with Databricks functions |
+| [databricks-tools-core](databricks-tools-core/) | Pure Python library with Databricks functions |
 | [databricks-mcp-server](databricks-mcp-server/) | MCP server wrapping core functions as tools |
 | [databricks-skills](databricks-skills/) | Skills for Claude Code with patterns & examples |
 
 ## Using the Core Library with Other Frameworks
 
-The core library (`databricks-mcp-core`) is framework-agnostic. While `databricks-mcp-server` exposes it via MCP for Claude Code, you can use the same functions with any AI agent framework.
+The core library (`databricks-tools-core`) is framework-agnostic. While `databricks-mcp-server` exposes it via MCP for Claude Code, you can use the same functions with any AI agent framework.
 
 ### Direct Python usage
 
 ```python
-from databricks_mcp_core.sql import execute_sql, get_table_details, TableStatLevel
+from databricks_tools_core.sql import execute_sql, get_table_details, TableStatLevel
 
 results = execute_sql("SELECT * FROM my_catalog.my_schema.customers LIMIT 10")
 
@@ -187,8 +187,8 @@ stats = get_table_details(
 
 ```python
 from langchain_core.tools import tool
-from databricks_mcp_core.sql import execute_sql, get_table_details
-from databricks_mcp_core.file import upload_folder
+from databricks_tools_core.sql import execute_sql, get_table_details
+from databricks_tools_core.file import upload_folder
 
 @tool
 def run_sql(query: str) -> list:
@@ -214,8 +214,8 @@ tools = [run_sql, get_table_info, upload_to_workspace]
 
 ```python
 from agents import Agent, function_tool
-from databricks_mcp_core.sql import execute_sql
-from databricks_mcp_core.spark_declarative_pipelines.pipelines import (
+from databricks_tools_core.sql import execute_sql
+from databricks_tools_core.spark_declarative_pipelines.pipelines import (
     create_pipeline, start_update, get_update
 )
 
@@ -243,7 +243,7 @@ This separation allows you to:
 
 ## Documentation
 
-- [databricks-mcp-core README](databricks-mcp-core/README.md) - Core library details, all functions
+- [databricks-tools-core README](databricks-tools-core/README.md) - Core library details, all functions
 - [databricks-mcp-server README](databricks-mcp-server/README.md) - Server configuration
 - [databricks-skills README](databricks-skills/README.md) - Skills installation and usage
 
@@ -255,11 +255,11 @@ git clone https://github.com/databricks-solutions/ai-dev-kit.git
 cd ai-dev-kit
 
 # Install with uv
-uv pip install -e databricks-mcp-core
+uv pip install -e databricks-tools-core
 uv pip install -e databricks-mcp-server
 
 # Run tests
-cd databricks-mcp-core
+cd databricks-tools-core
 uv run pytest tests/integration/ -v
 ```
 

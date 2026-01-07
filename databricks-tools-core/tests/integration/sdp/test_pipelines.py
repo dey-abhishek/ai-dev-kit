@@ -10,12 +10,12 @@ import logging
 import pytest
 from pathlib import Path
 
-from databricks_mcp_core.spark_declarative_pipelines.pipelines import (
+from databricks_tools_core.spark_declarative_pipelines.pipelines import (
     create_or_update_pipeline,
     delete_pipeline,
     find_pipeline_by_name,
 )
-from databricks_mcp_core.file.workspace import upload_folder
+from databricks_tools_core.file.workspace import upload_folder
 
 
 logger = logging.getLogger(__name__)

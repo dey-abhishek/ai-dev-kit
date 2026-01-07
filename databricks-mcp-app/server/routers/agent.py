@@ -50,6 +50,7 @@ class InvokeAgentRequest(BaseModel):
   project_id: str
   conversation_id: Optional[str] = None  # Will create new if not provided
   message: str
+  cluster_id: Optional[str] = None  # Databricks cluster for code execution
 
 
 @router.post('/invoke_agent')
@@ -122,6 +123,7 @@ async def invoke_agent(request: Request, body: InvokeAgentRequest):
         project_id=body.project_id,
         message=body.message,
         session_id=session_id,
+        cluster_id=body.cluster_id,
       ):
         event_type = event.get('type', '')
 
@@ -205,6 +207,10 @@ async def invoke_agent(request: Request, body: InvokeAgentRequest):
       # Update session_id for conversation resumption
       if new_session_id:
         await conv_storage.update_session_id(conversation_id, new_session_id)
+
+      # Update cluster_id if provided
+      if body.cluster_id:
+        await conv_storage.update_cluster_id(conversation_id, body.cluster_id)
 
       logger.info(
         f'Saved messages to conversation {conversation_id}: '

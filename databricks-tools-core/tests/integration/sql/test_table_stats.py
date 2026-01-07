@@ -9,7 +9,7 @@ Tests:
 """
 
 import pytest
-from databricks_mcp_core.sql import (
+from databricks_tools_core.sql import (
     get_table_details,
     TableStatLevel,
     TableSchemaResult,
@@ -64,7 +64,7 @@ class TestGetTableDetails:
     ):
         """Should filter tables using * glob pattern."""
         # First create tables with a common prefix
-        from databricks_mcp_core.sql import execute_sql
+        from databricks_tools_core.sql import execute_sql
 
         execute_sql(
             sql_query=f"CREATE OR REPLACE TABLE {test_catalog}.{test_schema}.raw_sales AS SELECT 1 as id",
@@ -90,7 +90,7 @@ class TestGetTableDetails:
         self, warehouse_id, test_catalog, test_schema, test_tables
     ):
         """Should filter tables using ? glob pattern."""
-        from databricks_mcp_core.sql import execute_sql
+        from databricks_tools_core.sql import execute_sql
 
         execute_sql(
             sql_query=f"CREATE OR REPLACE TABLE {test_catalog}.{test_schema}.dim_a AS SELECT 1 as id",

@@ -7,7 +7,7 @@ Tests:
 """
 
 import pytest
-from databricks_mcp_core.sql import execute_sql, execute_sql_multi, SQLExecutionError
+from databricks_tools_core.sql import execute_sql, execute_sql_multi, SQLExecutionError
 
 
 @pytest.mark.integration

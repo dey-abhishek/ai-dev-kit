@@ -19,33 +19,14 @@ import { Button } from '@/components/ui/Button';
 import {
   createConversation,
   deleteConversation,
+  fetchClusters,
   fetchConversation,
   fetchConversations,
   fetchProject,
   invokeAgent,
 } from '@/lib/api';
-import type { Conversation, Message, Project } from '@/lib/types';
+import type { Cluster, Conversation, Message, Project } from '@/lib/types';
 import { cn } from '@/lib/utils';
-
-// Event types from the streaming API
-interface ThinkingEvent {
-  type: 'thinking';
-  thinking: string;
-}
-
-interface ToolUseEvent {
-  type: 'tool_use';
-  tool_id: string;
-  tool_name: string;
-  tool_input: Record<string, unknown>;
-}
-
-interface ToolResultEvent {
-  type: 'tool_result';
-  tool_use_id: string;
-  content: string;
-  is_error: boolean;
-}
 
 // Combined activity item for display
 interface ActivityItem {
@@ -162,11 +143,15 @@ export default function ProjectPage() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState('');
   const [activityItems, setActivityItems] = useState<ActivityItem[]>([]);
+  const [clusters, setClusters] = useState<Cluster[]>([]);
+  const [selectedClusterId, setSelectedClusterId] = useState<string | undefined>();
+  const [clusterDropdownOpen, setClusterDropdownOpen] = useState(false);
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const clusterDropdownRef = useRef<HTMLDivElement>(null);
 
   // Load project and conversations
   useEffect(() => {
@@ -175,18 +160,29 @@ export default function ProjectPage() {
     const loadData = async () => {
       try {
         setIsLoading(true);
-        const [projectData, conversationsData] = await Promise.all([
+        const [projectData, conversationsData, clustersData] = await Promise.all([
           fetchProject(projectId),
           fetchConversations(projectId),
+          fetchClusters().catch(() => []), // Don't fail if clusters can't be loaded
         ]);
         setProject(projectData);
         setConversations(conversationsData);
+        setClusters(clustersData);
 
         // Load first conversation if available
         if (conversationsData.length > 0) {
           const conv = await fetchConversation(projectId, conversationsData[0].id);
           setCurrentConversation(conv);
           setMessages(conv.messages || []);
+          // Restore cluster selection from conversation, or default to first cluster
+          if (conv.cluster_id) {
+            setSelectedClusterId(conv.cluster_id);
+          } else if (clustersData.length > 0) {
+            setSelectedClusterId(clustersData[0].cluster_id);
+          }
+        } else if (clustersData.length > 0) {
+          // No conversation yet, but still select first cluster
+          setSelectedClusterId(clustersData[0].cluster_id);
         }
       } catch (error) {
         console.error('Failed to load project:', error);
@@ -205,6 +201,17 @@ export default function ProjectPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText, activityItems]);
 
+  // Close cluster dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (clusterDropdownRef.current && !clusterDropdownRef.current.contains(event.target as Node)) {
+        setClusterDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Select a conversation
   const handleSelectConversation = async (conversationId: string) => {
     if (!projectId || currentConversation?.id === conversationId) return;
@@ -214,6 +221,8 @@ export default function ProjectPage() {
       setCurrentConversation(conv);
       setMessages(conv.messages || []);
       setActivityItems([]);
+      // Restore cluster selection from conversation, or default to first cluster
+      setSelectedClusterId(conv.cluster_id || (clusters.length > 0 ? clusters[0].cluster_id : undefined));
     } catch (error) {
       console.error('Failed to load conversation:', error);
       toast.error('Failed to load conversation');
@@ -296,6 +305,7 @@ export default function ProjectPage() {
         projectId,
         conversationId,
         message: userMessage,
+        clusterId: selectedClusterId,
         signal: abortControllerRef.current.signal,
         onEvent: (event) => {
           const type = event.type as string;
@@ -376,7 +386,7 @@ export default function ProjectPage() {
       toast.error('Failed to send message');
       setIsStreaming(false);
     }
-  }, [projectId, input, isStreaming, currentConversation?.id]);
+  }, [projectId, input, isStreaming, currentConversation?.id, selectedClusterId]);
 
   // Handle keyboard submit
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -412,10 +422,57 @@ export default function ProjectPage() {
       <div className="flex flex-1 flex-col h-full">
         {/* Chat Header */}
         {currentConversation && (
-          <div className="flex h-14 items-center border-b border-[var(--color-border)] px-6 bg-[var(--color-bg-secondary)]/50">
+          <div className="flex h-14 items-center justify-between border-b border-[var(--color-border)] px-6 bg-[var(--color-bg-secondary)]/50">
             <h2 className="font-medium text-[var(--color-text-heading)]">
               {currentConversation.title}
             </h2>
+            {clusters.length > 0 && (
+              <div className="relative" ref={clusterDropdownRef}>
+                <button
+                  onClick={() => setClusterDropdownOpen(!clusterDropdownOpen)}
+                  className="flex items-center gap-2 h-8 px-3 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-bg-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-primary)]/50 transition-colors"
+                >
+                  {(() => {
+                    const selected = clusters.find(c => c.cluster_id === selectedClusterId);
+                    return selected ? (
+                      <>
+                        <span className={cn(
+                          'w-2 h-2 rounded-full',
+                          selected.state === 'RUNNING' ? 'bg-green-500' : 'bg-gray-400'
+                        )} />
+                        <span className="max-w-[180px] truncate">{selected.cluster_name}</span>
+                      </>
+                    ) : (
+                      <span className="text-[var(--color-text-muted)]">Loading...</span>
+                    );
+                  })()}
+                  <ChevronDown className={cn('w-3 h-3 transition-transform', clusterDropdownOpen && 'rotate-180')} />
+                </button>
+                {clusterDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-72 max-h-64 overflow-y-auto rounded-md border border-[var(--color-border)] bg-[var(--color-background)] shadow-lg z-50">
+                    {clusters.map((cluster) => (
+                      <button
+                        key={cluster.cluster_id}
+                        onClick={() => {
+                          setSelectedClusterId(cluster.cluster_id);
+                          setClusterDropdownOpen(false);
+                        }}
+                        className={cn(
+                          'w-full flex items-center gap-2 px-3 py-2 text-xs text-left hover:bg-[var(--color-bg-secondary)] transition-colors',
+                          selectedClusterId === cluster.cluster_id && 'bg-[var(--color-bg-secondary)]'
+                        )}
+                      >
+                        <span className={cn(
+                          'w-2 h-2 rounded-full flex-shrink-0',
+                          cluster.state === 'RUNNING' ? 'bg-green-500' : 'bg-gray-400'
+                        )} />
+                        <span className="truncate text-[var(--color-text-primary)]">{cluster.cluster_name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 

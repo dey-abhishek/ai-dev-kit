@@ -6,17 +6,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from dotenv import load_dotenv
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from starlette.middleware.cors import CORSMiddleware
-
-from .db import is_postgres_configured, run_migrations, init_database
-from .routers import agent_router, config_router, conversations_router, projects_router
-from .services.backup_manager import start_backup_worker, stop_backup_worker
-from .services.skills_manager import copy_skills_to_app
-
-# Configure logging
+# Configure logging BEFORE importing other modules
 logging.basicConfig(
   level=logging.INFO,
   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -24,6 +14,17 @@ logging.basicConfig(
     logging.StreamHandler(),
   ],
 )
+
+from dotenv import load_dotenv
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.cors import CORSMiddleware
+
+from .db import is_postgres_configured, run_migrations, init_database
+from .routers import agent_router, clusters_router, config_router, conversations_router, projects_router
+from .services.backup_manager import start_backup_worker, stop_backup_worker
+from .services.skills_manager import copy_skills_to_app
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,17 @@ app = FastAPI(
   lifespan=lifespan,
 )
 
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+  """Log all unhandled exceptions."""
+  logger.exception(f'Unhandled exception for {request.method} {request.url}: {exc}')
+  return JSONResponse(
+    status_code=500,
+    content={'detail': 'Internal Server Error', 'error': str(exc)},
+  )
+
+
 # Configure CORS
 allowed_origins = ['http://localhost:3000', 'http://localhost:5173'] if env == 'development' else []
 logger.info(f'CORS allowed origins: {allowed_origins}')
@@ -89,6 +101,7 @@ API_PREFIX = '/api'
 
 # Include routers
 app.include_router(config_router, prefix=API_PREFIX, tags=['configuration'])
+app.include_router(clusters_router, prefix=API_PREFIX, tags=['clusters'])
 app.include_router(projects_router, prefix=API_PREFIX, tags=['projects'])
 app.include_router(conversations_router, prefix=API_PREFIX, tags=['conversations'])
 app.include_router(agent_router, prefix=API_PREFIX, tags=['agent'])

@@ -2,7 +2,7 @@
 Databricks MCP Server
 
 A FastMCP server that exposes Databricks operations as MCP tools.
-Simply wraps functions from databricks-mcp-core.
+Simply wraps functions from databricks-tools-core.
 """
 from fastmcp import FastMCP
 

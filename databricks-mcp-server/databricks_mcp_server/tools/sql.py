@@ -1,7 +1,7 @@
 """SQL tools - Execute SQL queries and get table information."""
 from typing import Any, Dict, List, Optional
 
-from databricks_mcp_core.sql import (
+from databricks_tools_core.sql import (
     execute_sql as _execute_sql,
     execute_sql_multi as _execute_sql_multi,
     list_warehouses as _list_warehouses,

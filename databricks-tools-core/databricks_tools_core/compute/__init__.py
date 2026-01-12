@@ -6,8 +6,10 @@ Functions for executing code on Databricks clusters.
 
 from .execution import (
     ExecutionResult,
+    NoRunningClusterError,
+    list_clusters,
+    get_best_cluster,
     create_context,
-    execute_command_with_context,
     destroy_context,
     execute_databricks_command,
     run_python_file_on_databricks,
@@ -15,8 +17,10 @@ from .execution import (
 
 __all__ = [
     "ExecutionResult",
+    "NoRunningClusterError",
+    "list_clusters",
+    "get_best_cluster",
     "create_context",
-    "execute_command_with_context",
     "destroy_context",
     "execute_databricks_command",
     "run_python_file_on_databricks",

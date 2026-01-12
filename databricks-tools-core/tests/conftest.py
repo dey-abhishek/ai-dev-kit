@@ -7,12 +7,17 @@ Requires a valid Databricks connection (via env vars or ~/.databrickscfg).
 
 import logging
 import os
+from pathlib import Path
 import pytest
 from databricks.sdk import WorkspaceClient
 
 # Test catalog and schema names
 TEST_CATALOG = "ai_dev_kit_test"
 TEST_SCHEMA = "test_schema"
+TEST_VOLUME = "test_volume"
+
+# Test data directory
+TEST_DATA_DIR = Path(__file__).parent / "integration" / "sql" / "test_data"
 
 logger = logging.getLogger(__name__)
 
@@ -73,16 +78,22 @@ def test_schema(workspace_client: WorkspaceClient, test_catalog: str) -> str:
     # Drop schema if exists (cascade to remove all objects)
     try:
         logger.info(f"Dropping existing schema: {full_schema_name}")
-        workspace_client.schemas.delete(full_schema_name)
-    except Exception:
-        pass  # Schema doesn't exist, that's fine
+        workspace_client.schemas.delete(full_schema_name, force=True)
+    except Exception as e:
+        logger.debug(f"Schema delete failed (may not exist): {e}")
 
     # Create fresh schema
     logger.info(f"Creating schema: {full_schema_name}")
-    workspace_client.schemas.create(
-        name=TEST_SCHEMA,
-        catalog_name=test_catalog,
-    )
+    try:
+        workspace_client.schemas.create(
+            name=TEST_SCHEMA,
+            catalog_name=test_catalog,
+        )
+    except Exception as e:
+        if "already exists" in str(e):
+            logger.info(f"Schema already exists, reusing: {full_schema_name}")
+        else:
+            raise
 
     yield TEST_SCHEMA
 
@@ -248,3 +259,67 @@ def test_tables(
 
     logger.info(f"Created test tables: {list(tables.keys())}")
     return tables
+
+
+@pytest.fixture(scope="module")
+def test_volume(
+    workspace_client: WorkspaceClient,
+    test_catalog: str,
+    test_schema: str,
+) -> str:
+    """
+    Create a test volume and upload test files.
+
+    Creates:
+    - parquet_data/: Parquet files for testing
+    - txt_files/: Text files for file listing tests
+
+    Returns the volume name.
+    """
+    from databricks.sdk.service.catalog import VolumeType
+
+    full_volume_name = f"{test_catalog}.{test_schema}.{TEST_VOLUME}"
+    volume_path = f"/Volumes/{test_catalog}/{test_schema}/{TEST_VOLUME}"
+
+    # Delete volume if exists (fresh start)
+    try:
+        logger.info(f"Deleting existing volume: {full_volume_name}")
+        workspace_client.volumes.delete(full_volume_name)
+    except Exception:
+        pass  # Volume doesn't exist, that's fine
+
+    # Create the volume
+    logger.info(f"Creating volume: {full_volume_name}")
+    workspace_client.volumes.create(
+        catalog_name=test_catalog,
+        schema_name=test_schema,
+        name=TEST_VOLUME,
+        volume_type=VolumeType.MANAGED,
+    )
+
+    # Upload parquet files
+    parquet_dir = TEST_DATA_DIR / "parquet"
+    if parquet_dir.exists():
+        for file_path in parquet_dir.glob("*.parquet"):
+            remote_path = f"{volume_path}/parquet_data/{file_path.name}"
+            logger.info(f"Uploading {file_path.name} to {remote_path}")
+            with open(file_path, "rb") as f:
+                workspace_client.files.upload(remote_path, f, overwrite=True)
+
+    # Upload txt files
+    txt_dir = TEST_DATA_DIR / "txt_files"
+    if txt_dir.exists():
+        for file_path in txt_dir.glob("*.txt"):
+            remote_path = f"{volume_path}/txt_files/{file_path.name}"
+            logger.info(f"Uploading {file_path.name} to {remote_path}")
+            with open(file_path, "rb") as f:
+                workspace_client.files.upload(remote_path, f, overwrite=True)
+
+    logger.info(f"Created test volume with files: {TEST_VOLUME}")
+    yield TEST_VOLUME
+
+    # Cleanup (optional)
+    # try:
+    #     workspace_client.volumes.delete(full_volume_name)
+    # except Exception as e:
+    #     logger.warning(f"Failed to cleanup volume: {e}")

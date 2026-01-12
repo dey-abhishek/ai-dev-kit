@@ -6,13 +6,16 @@ Functions for executing SQL queries, managing SQL warehouses, and getting table 
 
 from .sql import execute_sql, execute_sql_multi
 from .warehouse import list_warehouses, get_best_warehouse
-from .table_stats import get_table_details
+from .table_stats import get_table_details, get_volume_folder_details
 from .sql_utils import (
     SQLExecutionError,
     TableStatLevel,
     TableSchemaResult,
-    TableInfo,
+    DataSourceInfo,
+    TableInfo,  # Alias for DataSourceInfo (backwards compatibility)
     ColumnDetail,
+    VolumeFileInfo,
+    VolumeFolderResult,  # Alias for DataSourceInfo (backwards compatibility)
 )
 
 __all__ = [
@@ -24,10 +27,15 @@ __all__ = [
     "get_best_warehouse",
     # Table statistics
     "get_table_details",
+    "get_volume_folder_details",
     "TableStatLevel",
     "TableSchemaResult",
-    "TableInfo",
+    "DataSourceInfo",
+    "TableInfo",  # Alias for DataSourceInfo
     "ColumnDetail",
+    # Volume folder statistics
+    "VolumeFileInfo",
+    "VolumeFolderResult",  # Alias for DataSourceInfo
     # Errors
     "SQLExecutionError",
 ]

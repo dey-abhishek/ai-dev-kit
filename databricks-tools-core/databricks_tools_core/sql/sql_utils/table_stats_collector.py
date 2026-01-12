@@ -218,27 +218,99 @@ class TableStatsCollector:
         self, catalog: str, schema: str, table_name: str
     ) -> Tuple[Dict[str, ColumnDetail], int, List[Dict[str, Any]]]:
         """
-        Collect enhanced column statistics for a table.
+        Collect enhanced column statistics for a UC table.
 
         Returns:
             Tuple of (column_details dict, total_rows, sample_data)
         """
         full_table_name = f"{catalog}.{schema}.{table_name}"
+        return self._collect_stats_for_ref(
+            table_ref=full_table_name,
+            catalog=catalog,
+            schema=schema,
+            use_describe_table=True,
+            fetch_value_counts_table=f"{catalog}.{schema}.{table_name}",
+        )
 
+    def collect_volume_stats(
+        self, volume_path: str, format: str
+    ) -> Tuple[Dict[str, ColumnDetail], int, List[Dict[str, Any]]]:
+        """
+        Collect enhanced column statistics for volume folder data.
+
+        Args:
+            volume_path: Full volume path (e.g., /Volumes/catalog/schema/volume/path)
+            format: Data format (parquet, csv, json, delta)
+
+        Returns:
+            Tuple of (column_details dict, total_rows, sample_data)
+        """
+        table_ref = f"read_files('{volume_path}', format => '{format}')"
+        return self._collect_stats_for_ref(
+            table_ref=table_ref,
+            catalog=None,
+            schema=None,
+            use_describe_table=False,
+            fetch_value_counts_table=None,
+        )
+
+    def _collect_stats_for_ref(
+        self,
+        table_ref: str,
+        catalog: Optional[str],
+        schema: Optional[str],
+        use_describe_table: bool,
+        fetch_value_counts_table: Optional[str],
+    ) -> Tuple[Dict[str, ColumnDetail], int, List[Dict[str, Any]]]:
+        """
+        Internal method to collect column statistics for any table reference.
+
+        Args:
+            table_ref: SQL table reference (UC table name or read_files(...))
+            catalog: Catalog for query context (optional)
+            schema: Schema for query context (optional)
+            use_describe_table: If True, use DESCRIBE TABLE; otherwise infer from SELECT
+            fetch_value_counts_table: Table name for value counts query (None to skip)
+
+        Returns:
+            Tuple of (column_details dict, total_rows, sample_data)
+        """
         try:
             # Step 1: Get column information
-            describe_result = self.executor.execute(
-                sql_query=f"DESCRIBE TABLE {full_table_name}",
-                catalog=catalog,
-                schema=schema,
-                timeout=45,
-            )
-            if not describe_result:
-                return {}, 0, []
+            if use_describe_table:
+                describe_result = self.executor.execute(
+                    sql_query=f"DESCRIBE TABLE {table_ref}",
+                    catalog=catalog,
+                    schema=schema,
+                    timeout=45,
+                )
+                if not describe_result:
+                    return {}, 0, []
+            else:
+                # For read_files, infer schema from a sample query
+                sample_query = f"SELECT * FROM {table_ref} LIMIT 1"
+                sample_row = self.executor.execute(sql_query=sample_query, timeout=60)
+                if not sample_row:
+                    return {}, 0, []
+                # Build describe_result-like structure from first row
+                describe_result = []
+                for col_name, value in sample_row[0].items():
+                    if col_name == "_rescued_data":
+                        continue
+                    # Infer type from Python value
+                    if isinstance(value, bool):
+                        data_type = "boolean"
+                    elif isinstance(value, int):
+                        data_type = "bigint"
+                    elif isinstance(value, float):
+                        data_type = "double"
+                    else:
+                        data_type = "string"
+                    describe_result.append({"col_name": col_name, "data_type": data_type})
 
             # Step 2: Get row count
             count_result = self.executor.execute(
-                sql_query=f"SELECT COUNT(*) as total_rows FROM {full_table_name}",
+                sql_query=f"SELECT COUNT(*) as total_rows FROM {table_ref}",
                 catalog=catalog,
                 schema=schema,
                 timeout=45,
@@ -251,7 +323,7 @@ class TableStatsCollector:
             columns_needing_value_counts: List[Tuple[str, str]] = []
 
             base_ref = "base"
-            base_cte = f"WITH {base_ref} AS (SELECT * FROM {full_table_name})\n"
+            base_cte = f"WITH {base_ref} AS (SELECT * FROM {table_ref})\n"
 
             for col_info in describe_result:
                 col_name = col_info.get("col_name", "")
@@ -309,11 +381,17 @@ class TableStatsCollector:
 
             # Step 4: Get sample data
             sample_result = self.executor.execute(
-                sql_query=f"SELECT * FROM {full_table_name} LIMIT {SAMPLE_ROW_COUNT}",
+                sql_query=f"SELECT * FROM {table_ref} LIMIT {SAMPLE_ROW_COUNT}",
                 catalog=catalog,
                 schema=schema,
                 timeout=45,
             )
+            # Filter out _rescued_data column from samples
+            if sample_result:
+                sample_result = [
+                    {k: v for k, v in row.items() if k != "_rescued_data"}
+                    for row in sample_result
+                ]
 
             # Step 5: Build column samples from sample data
             column_samples = self._extract_column_samples(describe_result, sample_result)
@@ -323,21 +401,26 @@ class TableStatsCollector:
                 stats_result, column_types, column_samples
             )
 
-            # Step 7: Get value counts for categorical columns
-            for col_name, detail in column_details.items():
-                if column_types.get(col_name) == "categorical":
-                    approx_unique = detail.unique_count or 0
-                    if 0 < approx_unique < MAX_CATEGORICAL_VALUES:
-                        columns_needing_value_counts.append((col_name, "categorical"))
+            # Step 7: Get value counts for categorical columns (only for UC tables)
+            if fetch_value_counts_table:
+                for col_name, detail in column_details.items():
+                    if column_types.get(col_name) == "categorical":
+                        approx_unique = detail.unique_count or 0
+                        if 0 < approx_unique < MAX_CATEGORICAL_VALUES:
+                            columns_needing_value_counts.append((col_name, "categorical"))
 
-            self._fetch_value_counts(
-                catalog, schema, table_name, columns_needing_value_counts, column_details
-            )
+                # Parse catalog.schema.table from fetch_value_counts_table
+                parts = fetch_value_counts_table.split(".")
+                if len(parts) == 3:
+                    self._fetch_value_counts(
+                        parts[0], parts[1], parts[2],
+                        columns_needing_value_counts, column_details
+                    )
 
             return column_details, total_rows, sample_result or []
 
         except Exception as e:
-            logger.warning(f"Failed to collect stats for {full_table_name}: {e}")
+            logger.warning(f"Failed to collect stats for {table_ref}: {e}")
             return {}, 0, []
 
     def _build_column_stats_query(
@@ -628,7 +711,7 @@ class TableStatsCollector:
                     logger.warning(f"Failed to collect stats for {full_table_name}: {e}")
 
             table_info = TableInfo(
-                table_name=full_table_name,
+                name=full_table_name,
                 comment=comment,
                 ddl=ddl,
                 column_details=column_details,
@@ -678,7 +761,7 @@ class TableStatsCollector:
             except Exception as e:
                 logger.error(f"Failed to get info for {catalog}.{schema}.{table_name}: {e}")
                 return TableInfo(
-                    table_name=f"{catalog}.{schema}.{table_name}",
+                    name=f"{catalog}.{schema}.{table_name}",
                     ddl="",
                     error=str(e),
                 )
@@ -697,7 +780,7 @@ class TableStatsCollector:
                     table = future_to_table[future]
                     logger.error(f"Unexpected error for {table['name']}: {e}")
                     results.append(TableInfo(
-                        table_name=f"{catalog}.{schema}.{table['name']}",
+                        name=f"{catalog}.{schema}.{table['name']}",
                         ddl="",
                         error=str(e),
                     ))

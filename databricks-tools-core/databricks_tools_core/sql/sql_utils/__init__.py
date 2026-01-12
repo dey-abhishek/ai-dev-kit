@@ -9,8 +9,11 @@ from .models import (
     TableStatLevel,
     HistogramBin,
     ColumnDetail,
-    TableInfo,
+    DataSourceInfo,
+    TableInfo,  # Alias for DataSourceInfo
     TableSchemaResult,
+    VolumeFileInfo,
+    VolumeFolderResult,  # Alias for DataSourceInfo
 )
 from .table_stats_collector import TableStatsCollector
 
@@ -22,7 +25,10 @@ __all__ = [
     "TableStatLevel",
     "HistogramBin",
     "ColumnDetail",
-    "TableInfo",
+    "DataSourceInfo",
+    "TableInfo",  # Alias for DataSourceInfo
     "TableSchemaResult",
+    "VolumeFileInfo",
+    "VolumeFolderResult",  # Alias for DataSourceInfo
     "TableStatsCollector",
 ]

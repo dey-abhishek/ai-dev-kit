@@ -86,20 +86,16 @@ The AI Dev Kit provides everything you need to build on Databricks using AI assi
 
 ## Quick Start
 
-### Step 1: Clone and install
+### Step 1: Clone and setup MCP server
 
 ```bash
 # Clone the repository
 git clone https://github.com/databricks-solutions/ai-dev-kit.git
 cd ai-dev-kit
 
-# Install the core library
-cd databricks-tools-core
-uv pip install -e .
-
-# Install the MCP server
-cd ../databricks-mcp-server
-uv pip install -e .
+# Setup the MCP server (creates venv and installs dependencies)
+cd databricks-mcp-server
+./setup.sh
 ```
 
 ### Step 2: Configure Databricks authentication
@@ -115,19 +111,13 @@ export DATABRICKS_CONFIG_PROFILE="your-profile"
 
 ### Step 3: Add MCP server to your project
 
-In your project directory, create `.claude/mcp.json`:
+In your project directory, register the MCP server with Claude Code:
 
-```json
-{
-  "mcpServers": {
-    "databricks": {
-      "command": "uv",
-      "args": ["run", "python", "-m", "databricks_mcp_server.server"],
-      "cwd": "/path/to/ai-dev-kit/databricks-mcp-server",
-      "defer_loading": true
-    }
-  }
-}
+```bash
+cd /path/to/your/project
+
+# Register the Databricks MCP server
+claude mcp add-json databricks '{"command":"/path/to/ai-dev-kit/databricks-mcp-server/.venv/bin/python","args":["/path/to/ai-dev-kit/databricks-mcp-server/run_server.py"]}'
 ```
 
 **Replace `/path/to/ai-dev-kit`** with the actual path where you cloned the repo.
@@ -138,12 +128,12 @@ Skills teach Claude best practices and patterns:
 
 ```bash
 # In your project directory
-curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash
+/path/to/ai-dev-kit/databricks-skills/install_skills.sh
 ```
 
 This installs to `.claude/skills/`:
 - **dabs-writer**: Databricks Asset Bundles patterns
-- **sdp-writer**: Spark Declarative Pipelines (DLT)
+- **sdp**: Spark Declarative Pipelines (DLT)
 - **synthetic-data-generation**: Realistic test data generation
 - **databricks-python-sdk**: SDK and API usage
 
@@ -152,6 +142,11 @@ This installs to `.claude/skills/`:
 ```bash
 cd /path/to/your/project
 claude
+```
+
+Verify the MCP server is connected:
+```
+/mcp
 ```
 
 Claude now has both **skills** (knowledge) and **MCP tools** (actions) for Databricks!
@@ -163,6 +158,7 @@ Claude now has both **skills** (knowledge) and **MCP tools** (actions) for Datab
 | [databricks-tools-core](databricks-tools-core/) | Pure Python library with Databricks functions |
 | [databricks-mcp-server](databricks-mcp-server/) | MCP server wrapping core functions as tools |
 | [databricks-skills](databricks-skills/) | Skills for Claude Code with patterns & examples |
+| [databricks-claude-test-project](databricks-claude-test-project/) | Test project for experimenting with MCP tools |
 
 ## Using the Core Library with Other Frameworks
 
@@ -254,13 +250,23 @@ This separation allows you to:
 git clone https://github.com/databricks-solutions/ai-dev-kit.git
 cd ai-dev-kit
 
-# Install with uv
-uv pip install -e databricks-tools-core
-uv pip install -e databricks-mcp-server
+# Setup MCP server (includes databricks-tools-core)
+cd databricks-mcp-server
+./setup.sh
 
 # Run tests
-cd databricks-tools-core
+cd ../databricks-tools-core
 uv run pytest tests/integration/ -v
+```
+
+### Test Project
+
+Use the included test project to experiment with Claude Code and the MCP tools:
+
+```bash
+cd databricks-claude-test-project
+./setup.sh   # Requires databricks-mcp-server setup first
+claude
 ```
 
 ## License

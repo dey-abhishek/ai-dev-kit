@@ -37,7 +37,7 @@ class TestGetTableDetails:
         assert result.schema_name == test_schema
         assert len(result.tables) >= 3  # customers, orders, products
 
-        table_names = [t.table_name.split(".")[-1] for t in result.tables]
+        table_names = [t.name.split(".")[-1] for t in result.tables]
         assert "customers" in table_names
         assert "orders" in table_names
         assert "products" in table_names
@@ -54,7 +54,7 @@ class TestGetTableDetails:
         )
 
         assert len(result.tables) == 2
-        table_names = [t.table_name.split(".")[-1] for t in result.tables]
+        table_names = [t.name.split(".")[-1] for t in result.tables]
         assert "customers" in table_names
         assert "orders" in table_names
         assert "products" not in table_names
@@ -84,7 +84,7 @@ class TestGetTableDetails:
 
         assert len(result.tables) >= 2
         for table in result.tables:
-            assert table.table_name.split(".")[-1].startswith("raw_")
+            assert table.name.split(".")[-1].startswith("raw_")
 
     def test_glob_pattern_question_mark(
         self, warehouse_id, test_catalog, test_schema, test_tables
@@ -110,7 +110,7 @@ class TestGetTableDetails:
 
         assert len(result.tables) >= 2
         for table in result.tables:
-            name = table.table_name.split(".")[-1]
+            name = table.name.split(".")[-1]
             assert name.startswith("dim_") and len(name) == 5
 
     def test_mixed_patterns_and_exact(
@@ -124,7 +124,7 @@ class TestGetTableDetails:
             warehouse_id=warehouse_id,
         )
 
-        table_names = [t.table_name.split(".")[-1] for t in result.tables]
+        table_names = [t.name.split(".")[-1] for t in result.tables]
         assert "customers" in table_names
         # Should also include raw_* tables if they exist
 
@@ -383,7 +383,7 @@ class TestTableInfoStructure:
 
         table = result.tables[0]
         expected_full_name = f"{test_catalog}.{test_schema}.customers"
-        assert table.table_name == expected_full_name
+        assert table.name == expected_full_name
 
     def test_ddl_contains_columns(
         self, warehouse_id, test_catalog, test_schema, test_tables

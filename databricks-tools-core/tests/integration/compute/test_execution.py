@@ -1,29 +1,199 @@
 """
 Integration tests for compute execution functions.
 
-Tests run_python_file_on_databricks with a real cluster.
+Tests execute_databricks_command and run_python_file_on_databricks with a real cluster.
 """
 
 import tempfile
 import pytest
 from pathlib import Path
 
-from databricks_tools_core.compute import run_python_file_on_databricks
+from databricks_tools_core.compute import (
+    execute_databricks_command,
+    run_python_file_on_databricks,
+    list_clusters,
+    get_best_cluster,
+    destroy_context,
+    NoRunningClusterError,
+)
 
-# Test cluster ID
-CLUSTER_ID = "0709-132523-cnhxf2p6"
+
+@pytest.fixture(scope="module")
+def shared_context():
+    """
+    Create a shared execution context for tests that need cluster execution.
+
+    This speeds up tests by reusing the same context instead of creating
+    a new one for each test (context creation takes ~5-10s).
+    """
+    # Get a running cluster
+    cluster_id = get_best_cluster()
+    if cluster_id is None:
+        pytest.skip("No running cluster available")
+
+    # Create context with first execution
+    result = execute_databricks_command(
+        code='print("Context initialized")',
+        cluster_id=cluster_id,
+        timeout=120,
+    )
+
+    if not result.success:
+        pytest.fail(f"Failed to create shared context: {result.error}")
+
+    yield {
+        "cluster_id": result.cluster_id,
+        "context_id": result.context_id,
+    }
+
+    # Cleanup
+    try:
+        destroy_context(result.cluster_id, result.context_id)
+    except Exception:
+        pass  # Ignore cleanup errors
+
+
+@pytest.mark.integration
+class TestListClusters:
+    """Tests for list_clusters function."""
+
+    def test_list_clusters_running_only(self):
+        """Should list running clusters quickly."""
+        clusters = list_clusters(include_terminated=False)
+
+        print(f"\n=== List Running Clusters ===")
+        print(f"Found {len(clusters)} running clusters:")
+        for c in clusters[:5]:
+            print(f"  - {c['cluster_name']} ({c['cluster_id']}) - {c['state']}")
+
+        assert isinstance(clusters, list)
+        # All should be running/pending states
+        for c in clusters:
+            assert c['state'] in ['RUNNING', 'PENDING', 'RESIZING', 'RESTARTING']
+
+    def test_list_clusters_with_limit(self):
+        """Should respect limit parameter."""
+        clusters = list_clusters(limit=5)
+
+        print(f"\n=== List Clusters (limit=5) ===")
+        print(f"Found {len(clusters)} clusters")
+
+        assert isinstance(clusters, list)
+        assert len(clusters) <= 5
+
+
+@pytest.mark.integration
+class TestGetBestCluster:
+    """Tests for get_best_cluster function."""
+
+    def test_get_best_cluster(self):
+        """Should return a running cluster ID or None."""
+        cluster_id = get_best_cluster()
+
+        print(f"\n=== Get Best Cluster ===")
+        print(f"Best cluster ID: {cluster_id}")
+
+        # Result can be None if no running clusters
+        if cluster_id is not None:
+            assert isinstance(cluster_id, str)
+            assert len(cluster_id) > 0
+
+
+@pytest.mark.integration
+class TestExecuteDatabricksCommand:
+    """Tests for execute_databricks_command function."""
+
+    def test_simple_code_with_shared_context(self, shared_context):
+        """Should execute simple code with shared context."""
+        result = execute_databricks_command(
+            code='print("Hello from shared context!")',
+            cluster_id=shared_context["cluster_id"],
+            context_id=shared_context["context_id"],
+            timeout=120
+        )
+
+        print(f"\n=== Shared Context Execution ===")
+        print(f"Success: {result.success}")
+        print(f"Output: {result.output}")
+
+        assert result.success, f"Execution failed: {result.error}"
+        assert "Hello" in result.output
+        assert result.context_id == shared_context["context_id"]
+
+    def test_context_variable_persistence(self, shared_context):
+        """Should persist variables across executions in same context."""
+        # Set a variable
+        result1 = execute_databricks_command(
+            code='test_var = 42\nprint(f"Set test_var = {test_var}")',
+            cluster_id=shared_context["cluster_id"],
+            context_id=shared_context["context_id"],
+            timeout=120
+        )
+
+        print(f"\n=== First Execution ===")
+        print(f"Success: {result1.success}")
+
+        assert result1.success, f"First execution failed: {result1.error}"
+
+        # Read the variable back
+        result2 = execute_databricks_command(
+            code='print(f"test_var is still {test_var}")',
+            cluster_id=shared_context["cluster_id"],
+            context_id=shared_context["context_id"],
+            timeout=120
+        )
+
+        print(f"\n=== Second Execution ===")
+        print(f"Success: {result2.success}")
+        print(f"Output: {result2.output}")
+
+        assert result2.success, f"Second execution failed: {result2.error}"
+        assert "test_var is still 42" in result2.output
+
+    def test_sql_execution(self, shared_context):
+        """Should execute SQL queries."""
+        result = execute_databricks_command(
+            code='SELECT 1 + 1 as result',
+            cluster_id=shared_context["cluster_id"],
+            language='sql',
+            timeout=120,
+        )
+
+        print(f"\n=== SQL Execution ===")
+        print(f"Success: {result.success}")
+        print(f"Output: {result.output}")
+
+        assert result.success, f"SQL execution failed: {result.error}"
+
+    def test_destroy_context_on_completion(self):
+        """Should destroy context when requested."""
+        try:
+            result = execute_databricks_command(
+                code='print("Destroying context after this")',
+                timeout=120,
+                destroy_context_on_completion=True
+            )
+
+            print(f"\n=== Destroy Context On Completion ===")
+            print(f"Success: {result.success}")
+            print(f"Context Destroyed: {result.context_destroyed}")
+
+            assert result.success, f"Execution failed: {result.error}"
+            assert result.context_destroyed is True
+            assert "destroyed" in result.message.lower()
+
+        except NoRunningClusterError as e:
+            pytest.skip(f"No running cluster available: {e}")
 
 
 @pytest.mark.integration
 class TestRunPythonFileOnDatabricks:
     """Tests for run_python_file_on_databricks function."""
 
-    def test_simple_print(self):
-        """Should execute a simple Python file and return output."""
-        code = """
-print("Hello from Databricks!")
-print(1 + 1)
-"""
+    def test_simple_file_execution(self, shared_context):
+        """Should execute a simple Python file."""
+        code = 'print("Hello from file!")\nprint(2 + 2)'
+
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
             f.write(code)
             f.flush()
@@ -31,32 +201,29 @@ print(1 + 1)
 
         try:
             result = run_python_file_on_databricks(
-                cluster_id=CLUSTER_ID,
                 file_path=temp_path,
-                timeout=120
+                cluster_id=shared_context["cluster_id"],
+                context_id=shared_context["context_id"],
+                timeout=120,
             )
 
-            print(f"\n=== Execution Result ===")
+            print(f"\n=== File Execution Result ===")
             print(f"Success: {result.success}")
             print(f"Output: {result.output}")
-            print(f"Error: {result.error}")
 
             assert result.success, f"Execution failed: {result.error}"
-            assert "Hello from Databricks!" in result.output
+            assert "Hello from file!" in result.output
 
         finally:
             Path(temp_path).unlink(missing_ok=True)
 
-    def test_spark_code(self):
-        """Should execute Spark code and return results."""
+    def test_spark_code(self, shared_context):
+        """Should execute Spark code."""
         code = """
-# Test Spark is available
 from pyspark.sql import SparkSession
 spark = SparkSession.builder.getOrCreate()
-
 df = spark.range(5)
 print(f"Row count: {df.count()}")
-print("Spark execution successful!")
 """
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
             f.write(code)
@@ -65,15 +232,15 @@ print("Spark execution successful!")
 
         try:
             result = run_python_file_on_databricks(
-                cluster_id=CLUSTER_ID,
                 file_path=temp_path,
-                timeout=120
+                cluster_id=shared_context["cluster_id"],
+                context_id=shared_context["context_id"],
+                timeout=120,
             )
 
             print(f"\n=== Spark Execution Result ===")
             print(f"Success: {result.success}")
             print(f"Output: {result.output}")
-            print(f"Error: {result.error}")
 
             assert result.success, f"Spark execution failed: {result.error}"
             assert "Row count: 5" in result.output
@@ -81,12 +248,10 @@ print("Spark execution successful!")
         finally:
             Path(temp_path).unlink(missing_ok=True)
 
-    def test_error_handling(self):
+    def test_error_handling(self, shared_context):
         """Should capture Python errors with details."""
-        code = """
-# This will raise an error
-x = 1 / 0
-"""
+        code = "x = 1 / 0  # This will raise ZeroDivisionError"
+
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
             f.write(code)
             f.flush()
@@ -94,27 +259,26 @@ x = 1 / 0
 
         try:
             result = run_python_file_on_databricks(
-                cluster_id=CLUSTER_ID,
                 file_path=temp_path,
-                timeout=120
+                cluster_id=shared_context["cluster_id"],
+                context_id=shared_context["context_id"],
+                timeout=120,
             )
 
             print(f"\n=== Error Handling Result ===")
             print(f"Success: {result.success}")
-            print(f"Output: {result.output}")
-            print(f"Error: {result.error}")
+            print(f"Error: {result.error[:200] if result.error else None}...")
 
             assert not result.success, "Should have failed with division by zero"
             assert result.error is not None
-            assert "ZeroDivisionError" in result.error or "division" in result.error.lower()
+            assert "ZeroDivisionError" in result.error
 
         finally:
             Path(temp_path).unlink(missing_ok=True)
 
     def test_file_not_found(self):
-        """Should handle missing file gracefully."""
+        """Should handle missing file gracefully (no cluster needed)."""
         result = run_python_file_on_databricks(
-            cluster_id=CLUSTER_ID,
             file_path="/nonexistent/path/to/file.py",
             timeout=120
         )
@@ -124,45 +288,4 @@ x = 1 / 0
         print(f"Error: {result.error}")
 
         assert not result.success
-        assert "not found" in result.error.lower() or "nonexistent" in result.error.lower()
-
-
-if __name__ == "__main__":
-    # Run tests directly for quick debugging
-    test = TestRunPythonFileOnDatabricks()
-
-    print("\n" + "="*50)
-    print("Running: test_simple_print")
-    print("="*50)
-    try:
-        test.test_simple_print()
-        print("✓ PASSED")
-    except Exception as e:
-        print(f"✗ FAILED: {e}")
-
-    print("\n" + "="*50)
-    print("Running: test_spark_code")
-    print("="*50)
-    try:
-        test.test_spark_code()
-        print("✓ PASSED")
-    except Exception as e:
-        print(f"✗ FAILED: {e}")
-
-    print("\n" + "="*50)
-    print("Running: test_error_handling")
-    print("="*50)
-    try:
-        test.test_error_handling()
-        print("✓ PASSED")
-    except Exception as e:
-        print(f"✗ FAILED: {e}")
-
-    print("\n" + "="*50)
-    print("Running: test_file_not_found")
-    print("="*50)
-    try:
-        test.test_file_not_found()
-        print("✓ PASSED")
-    except Exception as e:
-        print(f"✗ FAILED: {e}")
+        assert "not found" in result.error.lower()

@@ -1,5 +1,5 @@
 ---
-name: "streaming-best-practices-expert-pack"
+name: "streaming-best-practices"
 description: "Production-proven best practices for Spark Streaming: trigger intervals, partitioning, checkpoint management, and cluster configuration for reliable pipelines."
 tags: ["spark-streaming", "best-practices", "production", "performance", "expert"]
 ---

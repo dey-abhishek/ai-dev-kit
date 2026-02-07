@@ -1,5 +1,5 @@
 ---
-name: "late-data-handling-expert-pack"
+name: "late-data-handling"
 description: "Expert strategies for handling out-of-order events in streaming: watermark tuning, late arrival patterns in joins and aggregations, recovery scenarios for delayed data."
 tags: ["spark-streaming", "late-data", "watermark", "out-of-order", "state-management", "expert"]
 ---
@@ -292,7 +292,7 @@ A: Yes, but join operations use the maximum of the two watermarks.
 
 ## Related Skills
 
-- `stream-stream-joins-expert-pack` — Late data in joins
+- `stream-stream-joins` — Late data in joins
 - `state-store-tuning` — State management for late data
 - `streaming-deduplication-scale` — Deduplication with watermarks
 - `trigger-tuning-deep-dive` — Trigger impact on late data

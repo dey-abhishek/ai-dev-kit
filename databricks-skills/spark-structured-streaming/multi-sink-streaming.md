@@ -1,5 +1,5 @@
 ---
-name: "multi-sink-streaming-expert-pack"
+name: "multi-sink-streaming"
 description: "Expert patterns for writing stream output to multiple tables: broadcast-to-multiple-sinks, ForEachBatch fan-out, and transactional consistency patterns."
 tags: ["spark-streaming", "multi-sink", "foreachbatch", "fan-out", "expert"]
 ---
@@ -254,5 +254,5 @@ stream.writeStream \
 ## Related Skills
 
 - `parallel-writes-foreachbatch` — ForEachBatch optimization
-- `foreachbatch-patterns-expert-pack` — Deep dive on ForEachBatch
+- `foreachbatch-patterns` — Deep dive on ForEachBatch
 - `spark-streaming-master-class-kafka-to-delta` — Kafka integration

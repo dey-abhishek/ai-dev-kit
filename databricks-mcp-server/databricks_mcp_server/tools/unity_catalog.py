@@ -169,12 +169,21 @@ def manage_uc_objects(
     if otype == "catalog":
         if action == "create":
             result = _to_dict(
-                _create_catalog(name=name, comment=comment, storage_root=storage_root, properties=properties)
+                _create_catalog(
+                    name=name,
+                    comment=comment,
+                    storage_root=storage_root,
+                    properties=properties,
+                )
             )
             try:
                 from ..manifest import track_resource
 
-                track_resource(resource_type="catalog", name=name, resource_id=result.get("name", name))
+                track_resource(
+                    resource_type="catalog",
+                    name=name,
+                    resource_id=result.get("name", name),
+                )
             except Exception:
                 pass
             return result
@@ -198,12 +207,18 @@ def manage_uc_objects(
 
     elif otype == "schema":
         if action == "create":
-            result = _to_dict(_create_schema(catalog_name=catalog_name, schema_name=name, comment=comment))
+            result = _to_dict(
+                _create_schema(
+                    catalog_name=catalog_name, schema_name=name, comment=comment
+                )
+            )
             try:
                 from ..manifest import track_resource
 
                 full_schema = result.get("full_name") or f"{catalog_name}.{name}"
-                track_resource(resource_type="schema", name=full_schema, resource_id=full_schema)
+                track_resource(
+                    resource_type="schema", name=full_schema, resource_id=full_schema
+                )
             except Exception:
                 pass
             return result
@@ -212,7 +227,14 @@ def manage_uc_objects(
         elif action == "list":
             return {"items": _to_dict_list(_list_schemas(catalog_name=catalog_name))}
         elif action == "update":
-            return _to_dict(_update_schema(full_schema_name=full_name, new_name=new_name, comment=comment, owner=owner))
+            return _to_dict(
+                _update_schema(
+                    full_schema_name=full_name,
+                    new_name=new_name,
+                    comment=comment,
+                    owner=owner,
+                )
+            )
         elif action == "delete":
             _delete_schema(full_schema_name=full_name)
             return {"status": "deleted", "schema": full_name}
@@ -232,17 +254,32 @@ def manage_uc_objects(
             try:
                 from ..manifest import track_resource
 
-                full_vol = result.get("full_name") or f"{catalog_name}.{schema_name}.{name}"
-                track_resource(resource_type="volume", name=full_vol, resource_id=full_vol)
+                full_vol = (
+                    result.get("full_name") or f"{catalog_name}.{schema_name}.{name}"
+                )
+                track_resource(
+                    resource_type="volume", name=full_vol, resource_id=full_vol
+                )
             except Exception:
                 pass
             return result
         elif action == "get":
             return _to_dict(_get_volume(full_volume_name=full_name))
         elif action == "list":
-            return {"items": _to_dict_list(_list_volumes(catalog_name=catalog_name, schema_name=schema_name))}
+            return {
+                "items": _to_dict_list(
+                    _list_volumes(catalog_name=catalog_name, schema_name=schema_name)
+                )
+            }
         elif action == "update":
-            return _to_dict(_update_volume(full_volume_name=full_name, new_name=new_name, comment=comment, owner=owner))
+            return _to_dict(
+                _update_volume(
+                    full_volume_name=full_name,
+                    new_name=new_name,
+                    comment=comment,
+                    owner=owner,
+                )
+            )
         elif action == "delete":
             _delete_volume(full_volume_name=full_name)
             return {"status": "deleted", "volume": full_name}
@@ -256,7 +293,11 @@ def manage_uc_objects(
         elif action == "get":
             return _to_dict(_get_function(full_function_name=full_name))
         elif action == "list":
-            return {"items": _to_dict_list(_list_functions(catalog_name=catalog_name, schema_name=schema_name))}
+            return {
+                "items": _to_dict_list(
+                    _list_functions(catalog_name=catalog_name, schema_name=schema_name)
+                )
+            }
         elif action == "delete":
             _delete_function(full_function_name=full_name, force=force)
             return {"status": "deleted", "function": full_name}
@@ -304,18 +345,30 @@ def manage_uc_grants(
 
     if act == "grant":
         return _grant_privileges(
-            securable_type=securable_type, full_name=full_name, principal=principal, privileges=privileges
+            securable_type=securable_type,
+            full_name=full_name,
+            principal=principal,
+            privileges=privileges,
         )
     elif act == "revoke":
         return _revoke_privileges(
-            securable_type=securable_type, full_name=full_name, principal=principal, privileges=privileges
+            securable_type=securable_type,
+            full_name=full_name,
+            principal=principal,
+            privileges=privileges,
         )
     elif act == "get":
-        return _get_grants(securable_type=securable_type, full_name=full_name, principal=principal)
+        return _get_grants(
+            securable_type=securable_type, full_name=full_name, principal=principal
+        )
     elif act == "get_effective":
-        return _get_effective_grants(securable_type=securable_type, full_name=full_name, principal=principal)
+        return _get_effective_grants(
+            securable_type=securable_type, full_name=full_name, principal=principal
+        )
 
-    raise ValueError(f"Invalid action: '{action}'. Valid: grant, revoke, get, get_effective")
+    raise ValueError(
+        f"Invalid action: '{action}'. Valid: grant, revoke, get, get_effective"
+    )
 
 
 # =============================================================================
@@ -400,7 +453,11 @@ def manage_uc_storage(
         if action == "create":
             return _to_dict(
                 _create_external_location(
-                    name=name, url=url, credential_name=credential_name, comment=comment, read_only=read_only
+                    name=name,
+                    url=url,
+                    credential_name=credential_name,
+                    comment=comment,
+                    read_only=read_only,
                 )
             )
         elif action == "get":
@@ -476,14 +533,23 @@ def manage_uc_connections(
 
     if act == "create":
         return _to_dict(
-            _create_connection(name=name, connection_type=connection_type, options=options, comment=comment)
+            _create_connection(
+                name=name,
+                connection_type=connection_type,
+                options=options,
+                comment=comment,
+            )
         )
     elif act == "get":
         return _to_dict(_get_connection(name=name))
     elif act == "list":
         return {"items": _to_dict_list(_list_connections())}
     elif act == "update":
-        return _to_dict(_update_connection(name=name, options=options, new_name=new_name, owner=owner))
+        return _to_dict(
+            _update_connection(
+                name=name, options=options, new_name=new_name, owner=owner
+            )
+        )
     elif act == "delete":
         _delete_connection(name=name)
         return {"status": "deleted", "connection": name}
@@ -552,7 +618,11 @@ def manage_uc_tags(
 
     if act == "set_tags":
         return _set_tags(
-            object_type=object_type, full_name=full_name, tags=tags, column_name=column_name, warehouse_id=warehouse_id
+            object_type=object_type,
+            full_name=full_name,
+            tags=tags,
+            column_name=column_name,
+            warehouse_id=warehouse_id,
         )
     elif act == "unset_tags":
         return _unset_tags(
@@ -657,10 +727,15 @@ def manage_uc_security_policies(
         return _drop_row_filter(table_name=table_name, warehouse_id=warehouse_id)
     elif act == "set_column_mask":
         return _set_column_mask(
-            table_name=table_name, column_name=column_name, mask_function=mask_function, warehouse_id=warehouse_id
+            table_name=table_name,
+            column_name=column_name,
+            mask_function=mask_function,
+            warehouse_id=warehouse_id,
         )
     elif act == "drop_column_mask":
-        return _drop_column_mask(table_name=table_name, column_name=column_name, warehouse_id=warehouse_id)
+        return _drop_column_mask(
+            table_name=table_name, column_name=column_name, warehouse_id=warehouse_id
+        )
     elif act == "create_security_function":
         return _create_security_function(
             function_name=function_name,
@@ -795,14 +870,23 @@ def manage_uc_sharing(
             return {"status": "deleted", "share": name}
         elif act == "add_table":
             return _add_table_to_share(
-                share_name=name or share_name, table_name=table_name, shared_as=shared_as, partition_spec=partition_spec
+                share_name=name or share_name,
+                table_name=table_name,
+                shared_as=shared_as,
+                partition_spec=partition_spec,
             )
         elif act == "remove_table":
-            return _remove_table_from_share(share_name=name or share_name, table_name=table_name)
+            return _remove_table_from_share(
+                share_name=name or share_name, table_name=table_name
+            )
         elif act == "grant_to_recipient":
-            return _grant_share_to_recipient(share_name=name or share_name, recipient_name=recipient_name)
+            return _grant_share_to_recipient(
+                share_name=name or share_name, recipient_name=recipient_name
+            )
         elif act == "revoke_from_recipient":
-            return _revoke_share_from_recipient(share_name=name or share_name, recipient_name=recipient_name)
+            return _revoke_share_from_recipient(
+                share_name=name or share_name, recipient_name=recipient_name
+            )
 
     elif rtype == "recipient":
         if act == "create":

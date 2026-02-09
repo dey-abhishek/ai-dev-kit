@@ -149,7 +149,9 @@ def remove_resource(resource_type: str, resource_id: str) -> bool:
             return True
         return False
     except Exception as exc:
-        logger.warning("Failed to remove resource %s/%s: %s", resource_type, resource_id, exc)
+        logger.warning(
+            "Failed to remove resource %s/%s: %s", resource_type, resource_id, exc
+        )
         return False
 
 

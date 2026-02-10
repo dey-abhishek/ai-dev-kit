@@ -24,4 +24,6 @@ from .tools import (  # noqa: F401, E402
     volume_files,
     genie,
     manifest,
+    vector_search,
+    lakebase,
 )

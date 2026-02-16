@@ -42,7 +42,7 @@ MLFLOW_REPO_RAW_URL="https://raw.githubusercontent.com/mlflow/skills"
 MLFLOW_REPO_REF="main"
 
 # Databricks skills (hosted in this repo)
-DATABRICKS_SKILLS="databricks-asset-bundles databricks-agent-bricks databricks-aibi-dashboards databricks-app-apx databricks-app-python databricks-config databricks-dbsql databricks-docs databricks-genie databricks-jobs databricks-metric-views databricks-model-serving databricks-python-sdk databricks-unity-catalog databricks-vector-search databricks-zerobus-ingest lakebase-autoscale lakebase-provisioned mlflow-evaluation spark-declarative-pipelines spark-structured-streaming synthetic-data-generation unstructured-pdf-generation"
+DATABRICKS_SKILLS="databricks-agent-bricks databricks-aibi-dashboards databricks-asset-bundles databricks-app-apx databricks-app-python databricks-config databricks-dbsql databricks-docs databricks-genie databricks-jobs databricks-metric-views databricks-model-serving databricks-python-sdk databricks-unity-catalog databricks-vector-search databricks-zerobus-ingest lakebase-autoscale lakebase-provisioned mlflow-evaluation spark-declarative-pipelines spark-python-data-source spark-structured-streaming synthetic-data-generation unstructured-pdf-generation"
 
 # MLflow skills (fetched from mlflow/skills repo)
 MLFLOW_SKILLS="agent-evaluation analyze-mlflow-chat-session analyze-mlflow-trace instrumenting-with-mlflow-tracing mlflow-onboarding querying-mlflow-metrics retrieving-mlflow-traces searching-mlflow-docs"
@@ -71,6 +71,7 @@ get_skill_description() {
         "databricks-metric-views") echo "Unity Catalog Metric Views - governed business metrics in YAML" ;;
         "databricks-model-serving") echo "Model Serving - deploy MLflow models and AI agents" ;;
         "spark-declarative-pipelines") echo "Spark Declarative Pipelines (SDP/LDP/DLT)" ;;
+        "spark-python-data-source") echo "Spark custom Python data sources" ;;
         "spark-structured-streaming") echo "Spark Structured Streaming patterns and best practices" ;;
         "synthetic-data-generation") echo "Synthetic test data generation" ;;
         "unstructured-pdf-generation") echo "Generate synthetic PDFs for RAG" ;;

@@ -10,11 +10,11 @@
 #   curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash
 #
 #   # Install specific skills (can mix Databricks and MLflow skills)
-#   curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash -s -- asset-bundles agent-evaluation
+#   curl -sSL https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills/install_skills.sh | bash -s -- databricks-asset-bundles agent-evaluation
 #
 #   # Or run locally
 #   ./install_skills.sh                              # Install all skills
-#   ./install_skills.sh asset-bundles agent-evaluation  # Install specific skills
+#   ./install_skills.sh databricks-asset-bundles agent-evaluation  # Install specific skills
 #   ./install_skills.sh --mlflow-version v1.0.0      # Pin MLflow skills version
 #   ./install_skills.sh --local                      # Install Databricks skills from local directory
 #   ./install_skills.sh --list                       # List available skills
@@ -159,7 +159,7 @@ show_help() {
     echo "  ./install_skills.sh                          # Install all skills"
     echo "  ./install_skills.sh spark-declarative-pipelines  # Install specific Databricks skill"
     echo "  ./install_skills.sh agent-evaluation         # Install specific MLflow skill"
-    echo "  ./install_skills.sh asset-bundles agent-evaluation  # Mix of both sources"
+    echo "  ./install_skills.sh databricks-asset-bundles agent-evaluation  # Mix of both sources"
     echo "  ./install_skills.sh --mlflow-version v1.0.0  # Pin MLflow skills version"
     echo "  ./install_skills.sh --local                  # Install all from local directory"
     echo "  ./install_skills.sh --list                   # List available skills"
